@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2012 OpenWrt.org
+
+START=71
+
+start() 
+{	
+	service_start /bin/slicMgr
+}
+
+stop() 
+{
+	service_stop /bin/slicMgr
+}

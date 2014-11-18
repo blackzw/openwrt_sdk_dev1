@@ -1,0 +1,555 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	})
+	/* Global */
+	var G_SDK_VIRTUAL_SERVER_STATE_ENABLE = 1;
+	var G_SDK_VIRTUAL_SERVER_STATE_DISABLE = 0;
+	var configList, virtualServerStatus;
+	var operatorName;
+	var addConfigId;
+	var baseHref_all = "<%=REQUEST_URI%>";
+	
+
+	function uiPageInit()
+	{
+		initGlobleParam();
+		formload();
+		var $virtualServerState = $("#virServer_State").show();
+
+		/* five button init */
+		var $btnAdd = $("#btnAdd");
+		var $btnDelete = $("#btnDelete");
+		var $btnEdit = $("#btnEdit");
+		var $set_btnApply = $("#set_btnApply");
+		var $set_btnCancel = $("#set_btnCancel");
+		$btnDelete.setBtnDisabled();
+		$btnEdit.setBtnDisabled();
+		$btnAdd.removeBtnDisabled();
+		$set_btnApply.setBtnDisabled();
+		$set_btnCancel.setBtnDisabled();
+
+		$set_btnCancel.click(function()
+		{
+			window.location = window.location;
+		});
+
+		$btnAdd.click(AddApply);
+		$btnDelete.click(DeleteApply);
+		$btnEdit.click(EditApply);
+		$set_btnApply.click(SaveApply);
+
+		/* virtualServerStatus init */
+		if (virtualServerStatus == null || virtualServerStatus == "")
+		{
+			virtualServerStatus = 0;
+		}
+		showSwitchStatus($virtualServerState, virtualServerStatus, G_SDK_VIRTUAL_SERVER_STATE_ENABLE);
+
+		if (configList != null && configList.length != 0)
+		{
+			showServerConfigItem(configList);
+		}
+
+		/* checkBox init */
+		$("input[name='ckbAllconfig']").attr("disabled",false).change(function()
+		{
+			if ($(this).attr("checked") == "checked")
+			{
+				$("input[name='ckbsingleconfig']").each(function()
+				{
+					$(this).attr("checked", "checked");
+				});
+			} else
+			{
+				$("input[name='ckbsingleconfig']").each(function()
+				{
+					$(this).attr("checked", null);
+				});
+			}
+			listenMark();
+		});
+		$("input[name='ckbAllconfig']").attr("checked", null);
+
+		$("input[name='ckbsingleconfig']").change(function()
+		{
+			listenMark();
+		});
+
+		//$("#serverConfigTable tr:nth-child(odd)").css("background", "#efefef");
+		//$("#serverConfigTable tr:nth-child(odd)").addClass("cbi-section-table-row").addClass("cbi-rowstyle-2");
+		//$("#serverConfigTable tr:nth-child(even)").addClass("cbi-section-table-row").addClass("cbi-rowstyle-1");
+		$("table input:[type=text]").prop("readonly", true);
+		$("table select").attr("disabled", true);
+	}
+
+	function formload()
+	{
+		var configInfo = SDK.VirtualServer.GetVirtualServerSettings();
+		if (!configInfo.hasOwnProperty("error"))
+		{
+			virtualServerStatus = configInfo.result.VirtualServerStatus;
+			configList = configInfo.result.ServerConfigList;
+		}
+
+	}
+	function initGlobleParam()
+	{
+		 configList=[]
+		 virtualServerStatus=0;
+		 operatorName = 0;
+		 addConfigId = 0;
+		
+	}
+	
+	function showServerConfigItem(configList)
+	{
+		if (configList != null)
+		{
+			for ( var e in configList)
+			{
+				var itemConfig = configList[e];
+				if (itemConfig != "")
+				{
+					addconfigItem(itemConfig);
+				}
+			}
+		}
+	}
+
+	function addconfigItem(itemConfig)
+	{
+		var _item_Id = itemConfig.Id, _item_VirtualServerName = itemConfig.VirtualServerName, _item_WanPort = itemConfig.WanPort;
+		var _item_LanIP = itemConfig.LanIP, _item_LanPort = itemConfig.LanPort, _item_Protocol = itemConfig.Protocol;
+		var _item_SingleServerStatus = itemConfig.SingleServerStatus;
+		var itemTable = $("#serverConfigTable");
+		var itemStr = "";
+		itemStr = "<td><input type=text class=VirtualServerName value="+_item_VirtualServerName+" /></td>" + 
+		"<td><input type=text class=WanPort value="+_item_WanPort+" /></td>" + 
+		"<td><input type=text class=LanIP value="+_item_LanIP+" /></td>" + 
+		"<td><input type=text class=LanPort value="+_item_LanPort+" /></td>" + 
+		"<td><select class=Protocol ><option value=0>TCP</option><option value=1>UDP</option><option value=2>TCP/UDP</option></select></td>"+ 
+		"<td><select class=SingleServerStatus ><option value=1><%:ids_on%></option><option value=0><%:ids_off%></option></select></td>" + 
+		"<td style=text-align:center;><input type=checkbox name=ckbsingleconfig value="+_item_Id+" /></td>";
+		itemTable.append("<tr class=singleConfig_" + _item_Id +">" + itemStr + "</tr>");
+		$("#serverConfigTable .singleConfig_" + _item_Id +" .Protocol").val(_item_Protocol);
+		$("#serverConfigTable .singleConfig_" + _item_Id +" .SingleServerStatus").val(_item_SingleServerStatus);
+	}
+
+	function AddApply()
+	{
+		operatorName = 1;
+		addConfigId = $("#serverConfigTable tr").length;
+		$("#btnDelete,#btnEdit").setBtnDisabled();
+		$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+		$("input[name=ckbsingleconfig]").attr("checked",false).attr("disabled",true);
+		$("input[name=ckbAllconfig]").attr("checked",false).attr("disabled",true);
+		var itemTable = $("#serverConfigTable");
+		var itemStr = "";
+		itemStr = "<td><input type=text class=VirtualServerName /></td>" + 
+		"<td><input type=text class=WanPort  /></td>" + 
+		"<td><input type=text class=LanIP  /></td>" + 
+		"<td><input type=text class=LanPort  /></td>" + 
+		"<td><select class=Protocol value="+0+"><option value=0>TCP</option><option value=1>UDP</option><option value=2>TCP/UDP</option></select></td>" + 
+		"<td><select class=SingleServerStatus value="+0+"><option value=1><%:ids_on%></option><option value=0><%:ids_off%></option></select></td>"+ 
+		"<td style=text-align:center;><input type=checkbox name=ckbsingleconfig disabled=true value="+addConfigId+" /></td>";
+		itemTable.append("<tr class=singleConfig_" + addConfigId +">" + itemStr + "</tr>");
+
+	}
+
+	function EditApply()
+	{
+		operatorName = 2;
+		$("#btnDelete,#btnAdd").setBtnDisabled();
+		$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+		$("input[name='ckbAllconfig']").attr("disabled", true);
+		$("input[name='ckbsingleconfig']:checked").each(function()
+		{
+			var that = $(this);
+			that.attr("disabled", true);
+			var editConfigId = that.val();
+			$(".singleConfig_" + editConfigId + " input[type=text]").prop("readOnly", false);
+			$(".singleConfig_" + editConfigId + " select").attr("disabled", false);
+		})
+	}
+
+	function DeleteApply()
+	{
+		operatorName = 3;
+		$("#btnEdit,#btnAdd").setBtnDisabled();
+		$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+		$("input[name='ckbsingleconfig']:checked").each(function()
+		{
+				var that = $(this);
+				that.attr("disabled", true);
+				var deleteConfigId = that.val();
+				$("table tr").remove(".singleConfig_" + deleteConfigId);
+		})
+		listenMark();
+
+	}
+	
+	function SaveApply()
+	{
+		var params = getParam();
+		if(params.hasOwnProperty("error") || params == null)
+		{
+			return;
+		}
+		var checkResult;
+		var configList = params.ServerConfigList;
+		if (configList.length>0)
+		{
+			for(var i = 0;i<configList.length;i++)
+			{
+				checkResult = checkParamInvalid(configList[i]);
+				var warnClassName="param";
+				var isRight = false;
+				switch (checkResult)
+				{
+				case 0:
+					isRight = true;
+					configList[i].Id = i + 1;
+					for ( var j = i+1; j < configList.length; j++)
+					{
+						if(configList[i].WanPort == configList[j].WanPort && configList[i].Protocol == configList[j].Protocol)
+						{
+							isRight = false;
+							warnClassName = "WanPort";
+							i = j;
+							sys.alert("<%:ids_vtServer_wanProtInvalid%>")
+							break;
+						}else{
+							isRight = true;
+						}
+					}
+					break;
+				case 1:
+					warnClassName = "VirtualServerName";
+					sys.alert("<%:ids_vtServer_virtualServerNameInvalid%>")
+					break;
+				case 2:
+					warnClassName = "WanPort";
+					sys.alert("<%:ids_vtServer_wanProtInvalid%>")
+					break;
+				case 3:
+					warnClassName = "LanIP";
+					sys.alert("<%:ids_vtServer_lanIpInvalid%>")
+					break;
+				case 4:
+					warnClassName = "LanPort";
+					sys.alert("<%:ids_vtServer_lanPortInvalid%>")
+				break;
+					break;
+				default:
+					warnClassName = "param";
+					sys.alert("<%:ids_vtServer_paramsInvalid%>");
+					break;
+				}
+				if(isRight)
+				{
+					continue;
+				}else 
+				{
+					$(".singleConfig_"+configList[i].Id+" ."+warnClassName).addClass("input-error").focus(function()
+					{
+						$(".singleConfig_"+configList[i].Id+" ."+warnClassName).removeClass("input-error");
+					});
+					return;
+				}
+			}
+		}
+		var result = SDK.VirtualServer.SetVirtualServerSettings(params.VirtualServerStatus,params.ServerConfigList).error;
+		if (result == API_RESULT_SUCCESS)
+		{
+			sys.alert("<%:ids_succeeded%>", function()
+			{
+				location.href = baseHref_all;
+			});
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+			});
+		}
+		
+		
+	}
+	
+	function getParam()
+	{
+		var param;
+		var ServerConfigList = [];
+		virtualServerStatus = $("#virServer_State").is(":checked") ? 1 : 0;
+		if (virtualServerStatus !=0 && virtualServerStatus != 1)
+		{
+			return {"error":0};
+		}
+		if($("table tr").size() > 1)
+		{
+			$("table tr").each(function(i)
+			{
+				if (i > 0)
+				{
+					var that = $(this);
+					var trClassName = that.find(".VirtualServerName").val();
+					var singleConfig = {
+						"Id":parseInt(that.find("input[name=ckbsingleconfig]").val()), 
+						"VirtualServerName":$.trim(that.find(".VirtualServerName").val()),
+						"WanPort":$.trim(that.find(".WanPort").val()),
+						"LanIP": $.trim(that.find(".LanIP").val()),
+						"LanPort": $.trim(that.find(".LanPort").val()),
+						"Protocol": parseInt(that.find(".Protocol").val()),
+						"SingleServerStatus":parseInt(that.find(".SingleServerStatus").val())
+					}
+					ServerConfigList.push(singleConfig);
+				}
+			})
+		}
+		param = {
+			"VirtualServerStatus" :virtualServerStatus,
+			"ServerConfigList" : ServerConfigList
+		}
+		return param;
+	}
+
+	/* Util */
+/* 	0.OK 1.Name 1 	2.WAN Port 	3.LAN IP Address 	4.LAN Port 5.Protocol 6.Status*/
+	function checkParamInvalid(param)
+	{
+		if (param.hasOwnProperty("Id") && param.hasOwnProperty("VirtualServerName") && param.hasOwnProperty("WanPort") && param.hasOwnProperty("LanIP") && param.hasOwnProperty("LanPort") && param.hasOwnProperty("Protocol") && param.hasOwnProperty("SingleServerStatus"))
+		{
+			
+			if (!checkStringInvalid(param.VirtualServerName))
+			{
+				return 1;
+			}
+			if (!checkPortInvalid(param.WanPort))
+			{
+				return 2;
+			}
+			if (!checkIpAddressInvalid(param.LanIP))
+			{
+				return 3;
+			}
+			if (!checkPortInvalid(param.LanPort))
+			{
+				return 4;
+			}
+			if (!isNumber(param.Protocol))
+			{
+				return 5;
+			}
+			if (!isNumber(param.SingleServerStatus))
+			{
+				return 6;
+			}
+			if (!isNumber(param.Id))
+			{
+				return 7;
+			}
+			return 0;
+
+		}
+		
+		
+	}
+	function showSwitchStatus($CheckedState, InitStateValue, STATE_ENABLE)
+	{
+		var CheckedState = $CheckedState.is(":checked");
+		var $hasSwitch = $CheckedState.parent();
+		$hasSwitch.addClass("has-switch");
+		if (InitStateValue == STATE_ENABLE)
+		{
+			CheckedState = true;
+		} else
+		{
+			CheckedState = false;
+		}
+		if (CheckedState == true)
+		{
+			$hasSwitch.removeClass("switch-off").addClass("switch-on");
+			$CheckedState.attr("checked", true);
+		} else
+		{
+			$hasSwitch.removeClass("switch-on").addClass("switch-off");
+			$CheckedState.attr("checked", false);
+		}
+		$hasSwitch.click(function()
+		{
+			$("#set_btnApply").removeBtnDisabled();
+			$("#set_btnCancel").removeBtnDisabled();
+			if (CheckedState == true)
+			{
+				$hasSwitch.removeClass("switch-on").addClass("switch-off");
+				CheckedState = false;
+				$CheckedState.attr("checked", false);
+			} else
+			{
+				$hasSwitch.removeClass("switch-off").addClass("switch-on");
+				CheckedState = true;
+				$CheckedState.attr("checked", true);
+			}
+		});
+	}
+
+	function checkIpAddressInvalid(address)
+	{
+		var addrParts = address.split('.');
+		if (addrParts.length != 4)
+		{
+			return false;
+		}
+
+		for ( var i = 0; i < 4; i++)
+		{
+			if (isNaN(addrParts[i]) == true)
+			{
+				return false;
+			}
+
+			if (addrParts[i] == '')
+			{
+				return false;
+			}
+
+			if (addrParts[i].indexOf(' ') != -1)
+			{
+				return false;
+			}
+
+			if ((addrParts[i].indexOf('0') == 0) && (addrParts[i].length != 1))
+			{
+				return false;
+			}
+		}
+		if(addrParts[0] <=0 || addrParts[0]==127 || addrParts[0]>223 || addrParts[1]<0 || addrParts[1]>255 || addrParts[2]<0 || addrParts[2]>255 || addrParts[3] <=0 || addrParts[3]>=255)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	function checkPortInvalid(port)
+	{
+		var re = /^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]{1}|6553[0-5])$/;
+		return re.test(port);
+	}
+
+	function checkStausInvalid(status)
+	{
+		if (status == 0 || status == 1)
+		{
+			return true;
+		} else
+		{
+			return false;
+		}
+	}
+	function isNumber(str)
+	{
+		return /^-?[0-9]+$/.test(str);
+	}
+	function checkStringInvalid(str)
+	{
+		if (str == null || str == "")
+		{
+			return false;
+		} else
+		{
+			return true;
+		}
+	}
+
+	function listenMark()
+	{
+		var $ckbConfig = $("input[name='ckbsingleconfig']");
+		var ckbConfigLeng = $ckbConfig.length;
+		var $ckbConfigChecked = $("input[name='ckbsingleconfig']:checked");
+		var ckbConfigCheckedLeng = $ckbConfigChecked.length;
+		var $ckbSelectAllConfig = $("input[name='ckbAllconfig']");
+		if (ckbConfigLeng > 0 && ckbConfigCheckedLeng == ckbConfigLeng)
+		{
+			$ckbSelectAllConfig.attr("checked", true);
+		} else
+		{
+			$ckbSelectAllConfig.attr("checked", false);
+		}
+
+		if (ckbConfigCheckedLeng == 0)
+		{
+			$("#btnDelete").setBtnDisabled();
+			$("#btnEdit").setBtnDisabled();
+		} else
+		{
+			if (operatorName == 0)
+			{
+				$("#btnDelete").removeBtnDisabled();
+				$("#btnEdit").removeBtnDisabled();
+
+			} else if (operatorName == 1)
+			{
+				$("#btnDelete").setBtnDisabled();
+				$("#btnEdit").setBtnDisabled();
+				$("#btnAdd").removeBtnDisabled();
+			} else if (operatorName == 2)
+			{
+				$("#btnDelete").setBtnDisabled();
+				$("#btnAdd").setBtnDisabled();
+				$("#btnEdit").removeBtnDisabled();
+			} else if (operatorName == 3)
+			{
+				$("#btnAdd").setBtnDisabled();
+				$("#btnEdit").setBtnDisabled();
+				$("#btnDelete").removeBtnDisabled();
+			} else
+			{
+				$("#btnAdd").setBtnDisabled();
+				$("#btnDelete").setBtnDisabled();
+				$("#btnEdit").setBtnDisabled();
+			}
+		}
+	}
+</script>
+
+<div id="virtualServer_page_map" class="main-box border-notop form-horizontal">
+	<div class="cbi-map">
+		<div class="title-switch-checkbox border-all">
+			<h4 class="pull-left"><%:ids_vtServer_titleVirtualServer%></h4>
+			<div class="switch-checkbox-right">
+				<input id="virServer_State" name="virtual-server-status-value" type="checkbox" />
+			</div>
+		</div>
+
+		<fieldset class="cbi-section border-notop">
+			<div class="text-right mb20">
+				<button class="btn btn-primary" id="btnAdd"><%:ids_add%></button>
+				<button class="btn btn-primary" id="btnEdit"><%:ids_edit%></button>
+				<button class="btn btn-primary" id="btnDelete"><%:ids_delete%></button>
+			</div>
+			<table class="table table-striped table-hover table-tc border-notop" id="serverConfigTable">
+				<tr>
+					<th width="16%"><%:ids_name%></th>
+					<th width="14%"><%:ids_vtServer_wanPort%></th>
+					<th width="18%"><%:ids_vtServer_lanIp%></th>
+					<th width="14%"><%:ids_vtServer_lanPort%></th>
+					<th width="16%"><%:ids_protocol%></th>
+					<th width="10%"><%:ids_status%></th>
+					<th width="12%"><input type="checkbox" name="ckbAllconfig" /></th>
+				</tr>
+			</table>
+		</fieldset>
+	</div>
+	<div class="text-center">
+		<button class="btn btn-primary" id="set_btnApply"><%:ids_apply%></button>
+		<button class="btn btn-primary" id="set_btnCancel"><%:ids_cancel%></button>
+	</div>
+</div>
+<div id="mask">
+	<iframe id="maskIframe"></iframe>
+</div>
+<div id="loading"></div>
+<%+footer%>

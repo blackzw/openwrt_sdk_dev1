@@ -1,0 +1,319 @@
+<%+header%>
+<script>
+$(function($){
+    uiPageInit();
+})
+<%+admin_oem/simCommonFn%>
+
+var G_SDK_OVERTIME_STATE_ENABLE = 1;
+var G_SDK_OVERTIME_STATE_DISABLE = 0;
+var G_SDK_OVERFLOW_STATE_ENABLE = 1;
+var G_SDK_OVERFLOW_STATE_DISABLE = 0;
+var wanState;
+var simInfo;
+var usageSettings;
+var currentMonthUsage;
+var historyStatistics;
+var BillingDay;
+var CalibrationValue;
+var TotalValue;
+var Overtime;
+var OvertimeState;
+var OverflowState;
+var totalDuration;
+var tatalUsage;
+
+function uiPageInit(){
+    simInfo = SDK.SIM.GetSimStatus();
+    var $textShowBox = $("#text_show_box");
+    $("#monthly-plan-settings-box").hide();
+    if(simInfo.SIMState == G_SDK_SIM_STATE_READY){
+        uiShowMonthlyPlanSettings();
+    }else{
+        $textShowBox.show().html(simUiFn.getSimStatus(simInfo.SIMState));
+    }
+
+}
+
+function uiShowMonthlyPlanSettings(){
+    usageSettings = SDK.Statistics.GetUsageSettings();
+    if(usageSettings.hasOwnProperty("error"))
+    {
+        $("#text_show_box").html(usageSettings.error.message);
+        return
+    }
+    var $box = $("#monthly-plan-settings-box");
+    $box.show(); 
+    $("#text_show_box").hide();  
+    wanState = SDK.WanConnection.GetConnectionState().ConnectionStatus;   
+    currentMonthUsage = SDK.Statistics.GetCurrentMonthUsage();
+    historyStatistics = SDK.Statistics.GetHistoryStatistics();
+    BillingDay = usageSettings.BillingDay;//1   
+    TotalValue = ByteTransfertoMB(usageSettings.TotalValue);//55,
+    Overtime = usageSettings.Overtime;//3,
+    OvertimeState = usageSettings.OvertimeState;//0,
+    OverflowState = usageSettings.OverflowState;//0,
+    totalDuration = sys.getTimeDesc(historyStatistics.TotalDuration);
+    totalDuration = totalDuration == ""?0:totalDuration;
+    tatalUsage = sys.covertNum(historyStatistics.TotalUsage);
+
+    var $billingDay = $("input[name='billing-day']");   
+    var $totalValue = $("input[name='total-value']");
+    var $overtime = $("input[name='overtime-value']");
+    var $overtimeState = $("input[name='overtime-state-value']");
+    var $overflowState = $("input[name='overflow-state-value']"); 
+    var $btnClearAllRecords = $("#btnClearAllRecords");
+    var $textTotalDuration = $("#TotalDuration");
+    var $textTotalUsage = $("#MonthlyTotalUsage");
+    var $btnSave = $("#btnSave");
+    var $btnCancel = $("#btnCancel");
+
+    $billingDay.val(BillingDay);   
+    $totalValue.val(TotalValue);
+    $overtime.val(Overtime); 
+    $textTotalDuration.html(totalDuration);
+    $textTotalUsage.html(tatalUsage);    
+    showSwitchStatus($overtimeState,OvertimeState,G_SDK_OVERTIME_STATE_ENABLE);
+    showSwitchStatus($overflowState,OverflowState,G_SDK_OVERFLOW_STATE_ENABLE); 
+    $(".cbi-input-invalid").removeClass("cbi-input-invalid");
+    $(".cbi-section-node").find(".rule").remove();
+    $("#btnSave,#btnCancel").setBtnDisabled();   
+         
+    if(TotalValue == 0){
+        disableSwitchStatus($overflowState);
+    }     
+    if(Overtime == 0){
+        disableSwitchStatus($overtimeState);
+    }
+    $billingDay.bind("keyup",function(){
+        BillingDayVal = $billingDay.val();   
+		$("#btnSave,#btnCancel").removeBtnDisabled();
+        if(BillingDayVal == "" || !isNumber(BillingDayVal) || BillingDayVal>31 || BillingDayVal<1){
+            $("#BillingDay").showRule('<%:ids_monthlyPlan_dayInvalid%>');
+            $billingDay.addClass("cbi-input-invalid");          
+        }else{
+            $billingDay.parent().find(".rule").remove();
+            $billingDay.removeClass("cbi-input-invalid");
+        }
+    })    
+    $totalValue.bind("keyup",function(){
+        TotalValueVal =$totalValue.val();
+		$("#btnSave,#btnCancel").removeBtnDisabled();
+        if(TotalValueVal == "" || !isNumber(TotalValueVal) || TotalValueVal>1024*100 || TotalValueVal<0){
+            disableSwitchStatus($overflowState);            
+            $totalValue.showRule('<%:ids_monthlyPlan_totalUsageInvalid%>');
+            $totalValue.addClass("cbi-input-invalid");
+        }else{
+            showSwitchStatus($overflowState,OverflowState,G_SDK_OVERFLOW_STATE_ENABLE); 
+            $totalValue.parent().find(".rule").remove();
+            $totalValue.removeClass("cbi-input-invalid");
+        } 
+    }); 
+
+    $overtime.bind("keyup",function(){
+        OvertimeVal =$overtime.val();
+		$("#btnSave,#btnCancel").removeBtnDisabled();
+        if(OvertimeVal == 0 ||OvertimeVal == "" || !isNumber(OvertimeVal) || OvertimeVal>43200 || OvertimeVal<1){
+            disableSwitchStatus($overtimeState);            
+            $overtime.showRule('<%:ids_monthlyPlan_overtimeInvalid%>'); 
+            $overtime.addClass("cbi-input-invalid");
+        }else{
+             showSwitchStatus($overtimeState,OvertimeState,G_SDK_OVERTIME_STATE_ENABLE);
+             $overtime.parent().find(".rule").remove();
+             $overtime.removeClass("cbi-input-invalid");
+        } 
+    });   
+
+    if(wanState == G_SDK_NETWORK_CONNCTION_CONNECTED|| wanState == G_SDK_NETWORK_CONNCTION_CONNECTING || wanState == G_SDK_NETWORK_CONNCTION_DISCONNECTING){
+            $btnClearAllRecords.setBtnDisabled();
+    }   
+    $btnClearAllRecords.click(ClearAllRecordsEvents);
+    $btnSave.click(uiSetMonthlyPlanSettings);
+    $btnCancel.click(uiShowMonthlyPlanSettings);
+}
+
+function showSwitchStatus($CheckedState,InitStateValue,STATE_ENABLE){
+    var CheckedState = $CheckedState.is(":checked");  
+    var $hasSwitch = $CheckedState.parent();
+    $hasSwitch.addClass("has-switch").css("cursor","pointer");
+    if(InitStateValue == STATE_ENABLE){
+        CheckedState = true;
+    }else{
+        CheckedState = false;
+    }
+    if(CheckedState == true){
+        $hasSwitch.removeClass("switch-off").addClass("switch-on");
+        $CheckedState.attr("checked",true);
+    }else{
+        $hasSwitch.removeClass("switch-on").addClass("switch-off");
+        $CheckedState.attr("checked",false);
+    }
+    $hasSwitch.bind("click",function(){
+        $("#btnSave,#btnCancel").removeBtnDisabled();
+        if(CheckedState == true){
+            $hasSwitch.removeClass("switch-on").addClass("switch-off");
+            CheckedState = false;
+            $CheckedState.attr("checked",false);
+        }else{
+            $hasSwitch.removeClass("switch-off").addClass("switch-on");
+             CheckedState = true;
+             $CheckedState.attr("checked",true);
+        }
+    });   
+}
+function disableSwitchStatus($CheckedState){
+    var $hasSwitch = $CheckedState.parent();
+    $hasSwitch.addClass("has-switch").css("cursor","default");
+    $hasSwitch.unbind("click");
+
+}
+
+function MBTransfertoByte(value){
+    return value*1024*1024
+}
+
+function ByteTransfertoMB(value){
+    return value/1024/1024
+}
+
+function uiSetMonthlyPlanSettings(){
+    var BillingDayVal=$("input[name='billing-day']").val();   
+    var TotalValueVal=$("input[name='total-value']").val();
+    var OvertimeVal=$("input[name='overtime-value']").val();
+    var OvertimeStateVal=$("input[name='overtime-state-value']").is(":checked")==true?G_SDK_OVERTIME_STATE_ENABLE:G_SDK_OVERTIME_STATE_DISABLE;
+    var OverflowStateVal=$("input[name='overflow-state-value']").is(":checked")==true?G_SDK_OVERFLOW_STATE_ENABLE:G_SDK_OVERFLOW_STATE_DISABLE;   
+    var result1 = SDK.Statistics.SetBillingDay({"BillingDay":parseInt(BillingDayVal)}).error;
+    var result2 = SDK.Statistics.SetTotalValue({"TotalValue":MBTransfertoByte(parseInt(TotalValueVal))}).error;
+    if(BillingDayVal == "" || !isNumber(BillingDayVal) || BillingDayVal>31 || BillingDayVal<1){
+            $("#BillingDay").showRule('<%:ids_monthlyPlan_dayInvalid%>');
+            return false
+        }
+     if(TotalValueVal == "" || !isNumber(TotalValueVal) || TotalValueVal>1024*100 || TotalValueVal<0){
+            $("input[name='total-value']").showRule('<%:ids_monthlyPlan_totalUsageInvalid%>');
+            return false
+        }   
+    if(!(Overtime == 0&&OvertimeVal==0)){       
+        if(OvertimeVal == "" || !isNumber(OvertimeVal) || OvertimeVal>43200 || OvertimeVal<1){
+            $("input[name='overtime-value']").showRule('<%:ids_monthlyPlan_overtimeInvalid%>'); 
+            return false
+        }   
+    }
+
+    if(Overtime == 0&&OvertimeVal==0){
+        var result3 = API_RESULT_SUCCESS;
+    }else{
+        var result3 = SDK.Statistics.SetDisconnectOvertime({"Overtime":parseInt(OvertimeVal)}).error;
+    }
+    var result4 = SDK.Statistics.SetDisconnectOvertimeState({"OvertimeState":OvertimeStateVal}).error;
+    var result5 = SDK.Statistics.SetDisconnectOverflowState({"OverflowState":OverflowStateVal}).error;  
+
+    if(result1 == API_RESULT_SUCCESS && result2 == API_RESULT_SUCCESS && result3 == API_RESULT_SUCCESS && result4 == API_RESULT_SUCCESS && result5 == API_RESULT_SUCCESS){
+        result = API_RESULT_SUCCESS;   
+    }else{
+        result = API_RESULT_FAIL;
+    }    
+    ShowDlgTips(result);
+}
+
+function ClearAllRecordsEvents(){
+    sys.confirm("<%:ids_monthlyPlan_deleteRecords%>",function(){       
+        var sendData=null;
+        var result = SDK.Statistics.ClearAllRecords(sendData);
+        ShowDlgTips(result.error);
+    })
+}
+function ShowDlgTips(result){
+    switch(result){
+        case 0:
+            sys.alert("<%:ids_succeeded%>",function(){
+                 uiPageInit();
+            })
+            break;        
+        default:
+            sys.alert("<%:ids_failed%>",function(){
+                 uiPageInit();
+            })
+    }    
+}
+</script>
+<div class="main-box border-notop">
+<!--sim status start-->
+<div id="text_show_box"></div>
+<!--sim status end-->
+
+<!--settings start-->
+<div class=" common-box" id="monthly-plan-settings-box" >
+	<div class="form" id="form_set_monthly_plan_settings">
+    	<div class="cbi-map form-horizontal">
+    		<fieldset class="cbi-section-node">
+                <div class="control-group"><label class="control-label"><h4><%:ids_usage%>:</h4></label></div>
+
+                <div class="control-group">
+                    <label class="control-label"><%:ids_monthlyPlan_billingDay%>:</label>
+                    <div class="controls">
+                        <input type="text" name="billing-day" id="BillingDay" maxlength="2" /><span>&nbsp;<%:ids_day%></span>
+                    </div>
+                </div> 
+
+    		    <div class="control-group">
+    		        <label class="control-label"><%:ids_monthlyPlan_dataPlan%>:</label>
+    		        <div class="controls">
+    		            <input type="text" name="total-value" id="TotalValue" /><span>&nbsp;<%:MB%></span>
+    		        </div>
+    		    </div>
+                
+    		    <div class="control-group">
+    		        <label class="control-label"><%:ids_monthlyPlan_autoDisconnet%>:</label>
+                    <div class="controls">
+                        <div id="OverflowState">
+                            <input id ="OverflowStateCheck" name ="overflow-state-value" type="checkbox">                  
+                        </div>
+                    </div>
+    		    </div>
+
+
+                <div class="control-group">
+                    <label class="control-label"><%:ids_monthlyPlan_resetData%>:</label>
+                    <div class="controls">
+                        <p>
+                            <span id ="MonthlyTotalUsage"></span>
+                            <button class="btn btn-primary btn-mini" id="btnClearAllRecords"><%:ids_monthlyPlan_reset%></button>
+                        </p>
+                    </div>
+                </div>   
+
+                <div class="control-group"><label class="control-label"><h4><%:ids_monthlyPlan_timeLimit%>:</h4></label></div>
+                <div class="control-group">
+                    <label class="control-label"><%:ids_monthlyPlan_setTimeLimit%>:</label>
+                    <div class="controls">
+                        <input type="text" name="overtime-value" id="Overtime" /><span>&nbsp;<%:ids_mins%></span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label"><%:ids_monthlyPlan_desTimeLimit%>:</label>
+                    <div class="controls">
+                        <div id="OvertimeState">
+                            <input id ="OvertimeStateCheck" name ="overtime-state-value" type="checkbox">                  
+                        </div>
+                    </div>
+                </div> 
+                <div class="control-group">
+                    <label class="control-label"><%:ids_monthlyPlan_timePass%>:</label>
+					<div class="controls">
+                        <p>
+                            <span id ="TotalDuration"></span>
+                        </p>    
+                    </div>
+                </div>
+    		</fieldset>
+    	</div>
+    	<div class="text-center">
+    	    <button id="btnSave" class="btn btn-primary"><%:ids_apply%></button>
+    	    <button id="btnCancel" class="btn btn-primary"><%:ids_cancel%></button>
+    	</div>
+	</div>
+</div>
+</div>
+<!--settings end-->
+<%+footer%>

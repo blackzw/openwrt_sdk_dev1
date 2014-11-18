@@ -1,0 +1,396 @@
+#!/bin/sh
+
+get_time_ntpserver_helper()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.NTPServer$2"
+	local permissions="1"
+	local num
+	let num=$2-1
+	case "$action" in
+		get_value)
+		local server=`$UCI_GET system.@timeserver[0].server 2> /dev/null`
+		local count=0
+		for item in $server
+		do
+			count=`expr $count + 1`
+			if [ $count -eq $num ]; then
+				val=$item
+				break
+			fi
+		done
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_ntpserver_helper()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.Time.NTPServer$2"
+	local num
+	let num=$2-1
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 64 ] && return $E_INVALID_ARGUMENTS
+		local server=`$UCI_GET system.@timeserver[0].server 2> /dev/null`
+		
+		local count=0
+		for item in $server
+		do
+			$UCI_DEL_LIST system.@timeserver[0].server="$item" 2> /dev/null
+		done
+		for item in $server
+		do
+			count=`expr $count + 1`
+			if [ $count -eq $num ]; then
+				$UCI_ADD_LIST system.@timeserver[0].server="$val" 2> /dev/null
+			else
+				$UCI_ADD_LIST system.@timeserver[0].server="$item" 2> /dev/null
+			fi
+		done
+		$UCI_COMMIT system
+		/etc/init.d/sysntpd restart >/dev/null 2>&1 &
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_time_current_local_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.CurrentLocalTime"
+	local permissions="0"
+	local num
+	let num=$2-1
+	case "$action" in
+		get_value)
+		val=`date "+%Y-%m-%d %H:%M:%S" 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_current_local_time()
+{}
+
+get_time_local_time_zone()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.LocalTimeZone"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local zn=`$UCI_GET system.@system[0].zonename 2> /dev/null`
+		if [ "$zn" = "" ]
+		then
+			val="+0:00"
+		else
+			local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua get_timezone_offset $zn` 
+			local tempval=`echo ${temp#*OFFSET=}`
+		   	val=`echo ${tempval%%;*}`
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_local_time_zone()
+{}
+
+get_time_local_time_zone_name()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.LocalTimeZoneName"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET system.@system[0].zonename 2> /dev/null`
+		[ "$val" = "" ] && val="UTC"
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_local_time_zone_name()
+{}
+
+get_time_daylight_savings_used()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.DaylightSavingsUsed"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		#TODO
+		val="false"
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_daylight_savings_used()
+{}
+
+get_time_daylight_savings_start()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.DaylightSavingsStart"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		#TODO
+		val=""
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_daylight_savings_start()
+{}
+
+get_time_daylight_savings_end()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Time.DaylightSavingsEnd"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		#TODO
+		val=""
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_time_daylight_savings_end()
+{}
+
+get_time_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.Time." "" "0"
+	;;
+esac
+return 0
+}
+
+set_time_info_notification()
+{
+	local param="$1"
+	local val="$2"
+	easycwmp_set_parameter_notification "$param" "$val"
+	return 0
+}
+
+get_time_info() {
+case "$1" in
+	InternetGatewayDevice.)
+	get_time_object 0
+	get_time_ntpserver_helper "$2" 1
+	get_time_ntpserver_helper "$2" 2
+	get_time_ntpserver_helper "$2" 3
+	get_time_ntpserver_helper "$2" 4
+	get_time_ntpserver_helper "$2" 5
+	get_time_current_local_time "$2"
+	get_time_local_time_zone "$2"
+	get_time_local_time_zone_name "$2"
+	get_time_daylight_savings_used "$2"
+	get_time_daylight_savings_start "$2"
+	get_time_daylight_savings_end "$2"
+	return 0
+	;;
+	InternetGatewayDevice.Time.)
+	get_time_object "$2"
+	get_time_ntpserver_helper 0 1
+	get_time_ntpserver_helper 0 2
+	get_time_ntpserver_helper 0 3
+	get_time_ntpserver_helper 0 4
+	get_time_ntpserver_helper 0 5
+	get_time_current_local_time 0
+	get_time_local_time_zone 0
+	get_time_local_time_zone_name 0
+	get_time_daylight_savings_used 0
+	get_time_daylight_savings_start 0
+	get_time_daylight_savings_end 0
+	return 0
+	;;
+	InternetGatewayDevice.Time.NTPServer1)
+	get_time_ntpserver_helper "$2" 1
+	return $?
+	;;
+	InternetGatewayDevice.Time.NTPServer2)
+	get_time_ntpserver_helper "$2" 2
+	return $?
+	;;
+	InternetGatewayDevice.Time.NTPServer3)
+	get_time_ntpserver_helper "$2" 3
+	return $?
+	;;
+	InternetGatewayDevice.Time.NTPServer4)
+	get_time_ntpserver_helper "$2" 4
+	return $?
+	;;
+	InternetGatewayDevice.Time.NTPServer5)
+	get_time_ntpserver_helper "$2" 5
+	return $?
+	;;
+	InternetGatewayDevice.Time.CurrentLocalTime)
+	get_time_current_local_time "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.LocalTimeZone)
+	get_time_local_time_zone "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.LocalTimeZoneName)
+	get_time_local_time_zone_name "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.DaylightSavingsUsed)
+	get_time_daylight_savings_used "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.DaylightSavingsStart)
+	get_time_daylight_savings_start "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.DaylightSavingsEnd)
+	get_time_daylight_savings_end "$2"
+	return $?
+	;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_time_info() {
+local fcode
+case "$action" in
+	set_value)
+	fcode=$E_NON_WRITABLE_PARAMETER
+	;;
+	set_notification)
+	fcode=$E_NOTIFICATION_REJECTED
+	;;
+esac
+
+case "$1" in
+	InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.Time.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.Time.NTPServer1)
+	set_time_ntpserver_helper $2 1
+	return 0
+	;;	
+	InternetGatewayDevice.Time.NTPServer2)
+	set_time_ntpserver_helper $2 2
+	return 0
+	;;
+	InternetGatewayDevice.Time.NTPServer3)
+	set_time_ntpserver_helper $2 3
+	return 0
+	;;
+	InternetGatewayDevice.Time.NTPServer4)
+	set_time_ntpserver_helper $2 4
+	return 0
+	;;
+	InternetGatewayDevice.Time.NTPServer5)
+	set_time_ntpserver_helper $2 5
+	return 0
+	;;
+	InternetGatewayDevice.Time.CurrentLocalTime)
+	return $fcode
+	;;
+	InternetGatewayDevice.Time.LocalTimeZone)
+	[ "$action" = "set_notification" ] && set_time_info_notification "$1" "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.LocalTimeZoneName)
+	[ "$action" = "set_notification" ] && set_time_info_notification "$1" "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.DaylightSavingsUsed)
+	[ "$action" = "set_notification" ] && set_time_info_notification "$1" "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.DaylightSavingsStart)
+	[ "$action" = "set_notification" ] && set_time_info_notification "$1" "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Time.DaylightSavingsEnd)
+	[ "$action" = "set_notification" ] && set_time_info_notification "$1" "$2"
+	return $?
+	;;	
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_time_info() { return 0; }
+
+add_object_time_info() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_time_info() { return $E_INVALID_PARAMETER_NAME; }

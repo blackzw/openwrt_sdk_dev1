@@ -1,0 +1,28 @@
+config 'setting' 'Log'
+	option 'OpenLog' 'false'
+	option 'LogFile' '/var/log/rild_service.log'
+
+config 'setting' 'SerialPort'
+	option 'PortFile' '/dev/ttyUSB1'
+	option 'InterfaceId' '1'
+
+config 'setting' 'Database'
+	option 'DatabaseFile' '/usr/local/rild/database.dat'
+
+config 'setting' 'SMS'
+        option 'SMSMaxCount' 100
+        option 'SMSReportSwitch' 'false'
+
+config 'setting' 'Network'
+	option 'Mode' 0
+
+config 'setting' 'Connection'
+	option 'Type' 0
+	option 'ProfileUsedSpn' 'false'
+	option 'ProfileUsedNetworkType' 'false'
+
+config 'setting' 'Voice'
+	option 'VOIP' 0
+
+config 'setting' 'System'
+	option 'TestIMSI' ''

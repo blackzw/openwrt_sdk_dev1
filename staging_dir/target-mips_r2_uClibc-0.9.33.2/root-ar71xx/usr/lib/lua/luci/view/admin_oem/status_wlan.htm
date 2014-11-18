@@ -1,0 +1,76 @@
+<%+header%>
+<script type="text/javascript" src="<%=resource%>/wlan.js"></script>
+<script>
+$(function($){
+	uiPageInit();
+})
+<%+admin_oem/wlanUiFn%>
+
+function uiPageInit(){
+	uiShowWlanStatus();
+}
+
+function uiShowWlanStatus(){
+	var wlanSettingsInfo = SDK.Wlan.GetWlanSettings();
+	var wlanFrequency = wlanSettingsInfo.WlanFrequency;
+	if(wlanFrequency != G_SDK_WLAN_MODE_FREQUENCY_DISABLE){
+		var ssid,broadcast;
+		if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+			ssid =wlanUiFn.getSSID(wlanSettingsInfo.Ssid5G);
+			broadcast = wlanUiFn.getBroadcast(wlanSettingsInfo.SsidHidden5G);
+		}else{
+			ssid =wlanUiFn.getSSID(wlanSettingsInfo.Ssid);
+			broadcast = wlanUiFn.getBroadcast(wlanSettingsInfo.SsidHidden);
+		}
+		$("#span-wlan-frequency").html(wlanUiFn.getFrequency(wlanFrequency));
+		$("#span-ssid").html(ssid);
+		$("#span-broadcast").html(broadcast);
+		$("#span-encryption").html(wlanUiFn.getEncryption(wlanSettingsInfo.SecurityMode));
+		$("#span-mac").html(wlanSettingsInfo.MacAddress);
+
+		var wlanHostInfo = SDK.Wlan.GetNumOfHosts();
+		//$("#span-connected-users").html(wlanHostInfo.NumOfHosts+"/"+wlanHostInfo.MaxNumOfHosts);
+		$("#span-connected-users").html(wlanHostInfo.NumOfHosts);
+		$("#tb-wlan-status").show();
+	}else{
+		$("#wlan-off-box").show();
+	}
+	
+}
+
+</script>
+<style>
+	#tb-wlan-status,#wlan-off-box{display:none;}
+</style>
+<div class="main-box border-notop">
+	<fieldset class="cbi-section pt20">
+		<table id="tb-wlan-status" class="table noborder">
+			<tr>
+				<td class="text-right w45"><%:ids_wlan_frequency%>:</td>
+				<td><span id="span-wlan-frequency"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:SSID:%></td>
+				<td><span id="span-ssid"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_wlan_ssidBroadcast%>:</td>
+				<td><span id="span-broadcast"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_wlan_security%>:</td>
+				<td><span id="span-encryption"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_wlan_connectedUsers%>:</td>
+				<td><span id="span-connected-users"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_filter_macAddress%>:</td>
+				<td><span id="span-mac"></span></td>
+			</tr>
+		</table>
+		<div id="wlan-off-box" class="text-center"><%:ids_wlan_wlanOff%></div>
+	</fieldset>
+</div>
+<%+footer%>

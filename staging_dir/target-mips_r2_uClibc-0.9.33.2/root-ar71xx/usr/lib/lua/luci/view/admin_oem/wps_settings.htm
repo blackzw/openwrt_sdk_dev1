@@ -1,0 +1,125 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+var isHadSubmit = false;
+
+var G_SDK_WPS_MODE_PIN = 0;
+var G_SDK_WPS_MODE_PBC = 1;
+
+var P_wpsSettings = null;
+var P_wpsModeId = "#sel-wps-mode";
+var P_wpsPinId = "#ipt-wps-pin";
+
+function uiPageInit(){
+	$(".rule").remove();
+	isHadSubmit = false;
+	uiShowWpsSettings();
+	
+}
+
+function uiShowWpsSettings(){
+	P_wpsSettings = SDK.Wlan.GetWpsSettings();
+	$(P_wpsModeId).val(P_wpsSettings.WpsMode);
+	showPinField(P_wpsSettings.WpsMode);
+	$(P_wpsPinId).val(P_wpsSettings.WpsPin);
+
+	var $buttons = $(".text-center button");
+	if(P_wpsSettings.WpsMode == G_SDK_WPS_MODE_PBC){
+		$buttons.removeBtnDisabled();
+	}else{
+		$buttons.setBtnDisabled();
+		$(P_wpsModeId+","+P_wpsPinId).unbind().bind("input change keyup keydown paste",function(){
+			$buttons.removeBtnDisabled();
+		})
+	}
+}
+
+function showPinField(mode){
+	$("#wps-pin-box").css("display",mode == G_SDK_WPS_MODE_PIN?"block":"none");
+}
+
+function isNumber(str){
+    return /^[0-9]+$/.test(str);
+}
+
+function checkWpsPin(pin){
+	var code = parseInt(pin);
+	var accum = 0;
+	accum+=3*(Math.floor(code/10000000)%10);
+	accum+=1*(Math.floor(code/1000000)%10);
+	accum+=3*(Math.floor(code/100000)%10);
+	accum+=1*(Math.floor(code/10000)%10);
+	accum+=3*(Math.floor(code/1000)%10);
+	accum+=1*(Math.floor(code/100)%10);
+	accum+=3*(Math.floor(code/10)%10);
+	accum+=1*(Math.floor(code/1)%10);
+	return (0==(accum%10));
+}
+
+function uiSetWpsSettings(){
+	if(isHadSubmit){
+        return;
+    }else{
+        isHadSubmit = true;
+    }
+	var $wpsMode = $(P_wpsModeId);
+	wpsModeVal = parseInt($wpsMode.val());
+	var settingsData ={"WpsMode":wpsModeVal};
+	if(wpsModeVal == G_SDK_WPS_MODE_PIN){
+		var $pin = $(P_wpsPinId);
+		var pinCode = $pin.val();
+		if(pinCode == "" || (pinCode.length != 4 && pinCode.length != 8) || !isNumber(pinCode)){
+			$pin.showRule("<%:ids_wlan_wpsPinRule%>");
+			isHadSubmit = false;
+			return false;
+		}else if(!checkWpsPin(pinCode)){
+			$pin.showRule("<%:Invalid WPS PIN,please check if it is correct!%>");
+			isHadSubmit = false;
+			return false;
+		}else{
+			settingsData.WpsPin = pinCode;
+		}
+	}else{
+		//settingsData = $.extend(settingsData,P_wpsSettings);
+		settingsData = $.extend(settingsData,{"WpsPin":P_wpsSettings.WpsPin});
+	}
+	var result = SDK.Wlan.SetWpsSettings(settingsData);
+	sys.alert(result.error == 0?"<%:ids_succeeded%>":"<%:ids_failed%>",function(){
+		uiPageInit();
+	});
+}
+
+</script>
+<div class="main-box border-notop">
+	<div class="main-box-form form-horizontal pt20">
+		<form method="post" onsubmit="uiSetWpsSettings();return false;">
+	    	<div class="cbi-map form-field">
+	    		<fieldset class="cbi-section-node">
+	    		    <div class="control-group">
+	    		        <label class="control-label"><%:ids_wlan_wpsMode%>:</label>
+	    		        <div class="controls">
+	    		            <select class="cbi-input-select" id="sel-wps-mode" size="1" onchange="showPinField($(this).val())">
+	    		                <option value="0"><%:ids_wlan_wpsPin%></option>
+	    		                <option value="1"><%:ids_wlan_pbc%></option>
+	    		            </select>
+	    		        </div>
+	    		    </div>
+
+	    		    <div class="control-group" id="wps-pin-box">
+				        <label class="control-label"><%:ids_wlan_wpsPin%>:</label>
+				        <div class="controls">
+				            <input type="text" class="cbi-input-text" id="ipt-wps-pin" maxlength="8"/>
+				        </div>
+				    </div>
+	    		</fieldset>
+	    	</div>
+	    	<div class="text-center">
+	    	    <button type="submit" class="btn btn-primary"><%:ids_apply%></button>
+	    	    <button type="button" class="btn btn-primary" onclick="uiPageInit()"><%:ids_cancel%></button>
+	    	</div>
+		</form>
+	</div>
+</div>
+<%+footer%>

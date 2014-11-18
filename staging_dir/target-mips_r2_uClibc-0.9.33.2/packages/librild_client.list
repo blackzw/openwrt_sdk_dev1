@@ -1,0 +1,5 @@
+./
+./usr
+./usr/lib
+./usr/lib/librild_client.so
+./host

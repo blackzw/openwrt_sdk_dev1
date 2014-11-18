@@ -1,0 +1,57 @@
+<%#
+LuCI - Lua Configuration Interface
+Copyright 2008 Steven Barth <steven@midlink.org>
+Copyright 2008-2012 Jo-Philipp Wich <xm@subsignal.org>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+$Id: sysauth.htm 8327 2012-03-04 15:03:05Z jow $
+
+-%>
+
+<%+header%>
+<script>
+	IsLoginPage = true;
+</script>
+<form method="post" class="form-horizontal" action="<%=pcdata(luci.http.getenv("REQUEST_URI"))%>">
+	<div class="cbi-map">
+		<div class="login-wrap">
+			<div class="control-group">
+			    <label class="control-label" for="inputEmail"><%:ids_admin_userName%></label>
+			    <div class="controls">
+			      <input type="text" id="" name="username" placeholder="username" value="<%=duser%>">
+			    </div>
+			</div>
+			<div class="control-group">
+			    <label class="control-label" for="inputEmail"><%:ids_password%></label>
+			    <div class="controls">
+			      <input id="focus_password" type="password" name="password">
+			    </div>
+			</div>
+			<div class="control-group">
+				<div class="cbi-map-descr">
+					<%- if fstate == 1 then %>
+					<div class="rule" style="margin:5px 20px;"><%:ids_admin_otherLogin%></div>
+					<%- elseif fuser  then %>
+					<div class="rule" style="margin:5px 20px;"><%:ids_admin_InvalidPwTips%></div>
+					<% end -%>
+				</div>
+				<div class="controls">
+					<input type="submit" value="<%:ids_login%>" class="btn btn-primary" />
+				</div>
+			</div>
+		</div>
+	</div>
+
+	
+</form>
+<script type="text/javascript">//<![CDATA[
+	var input = document.getElementById('focus_password');
+	if (input)
+		input.focus();
+//]]></script>
+<%+footer%>

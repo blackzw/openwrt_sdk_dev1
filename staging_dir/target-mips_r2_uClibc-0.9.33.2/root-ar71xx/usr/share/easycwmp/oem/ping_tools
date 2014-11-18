@@ -1,0 +1,38 @@
+#!/bin/sh
+. /usr/share/easycwmp/defaults
+
+sleep 2
+
+result_file=$1
+interface=`uci get easycwmp.@ping_diagnostics[0].Interface`
+host=`uci get easycwmp.@ping_diagnostics[0].Host`
+num=`uci get easycwmp.@ping_diagnostics[0].NumberOfRepetitions`
+timeout=`uci get easycwmp.@ping_diagnostics[0].Timeout`
+blocksize=`uci get easycwmp.@ping_diagnostics[0].DataBlockSize`
+dscp=`uci get easycwmp.@ping_diagnostics[0].DSCP`
+
+if [ "$interface" = "$default_wan_interface" ]; then
+	interface="usb0"
+else
+	interface="br-lan"
+fi
+
+let timeout=$timeout/1000
+
+ping $host -I $interface -c $num -W $timeout -s $blocksize > $result_file 2>&1
+
+val=""
+
+result=`cat $result_file | grep -E "unknown\ host|bad\ address"`
+if [ -z $result ]; then
+	val="Complete"
+else
+	val="Error_CannotResolveHostName"
+fi
+
+uci set easycwmp.@ping_diagnostics[0].DiagnosticsState="$val"
+uci commit easycwmp
+
+ubus call tr069 inform '{"event":"8 diagnostics complete"}'
+
+

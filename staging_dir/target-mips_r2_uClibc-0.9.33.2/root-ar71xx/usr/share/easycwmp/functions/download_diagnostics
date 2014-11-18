@@ -1,0 +1,665 @@
+#!/bin/sh
+
+
+
+get_download_diagnostics_state_inter()
+{
+	local val=""
+	if [ ! -e "$download_diag_result_file" ]; then
+		val="None"
+	else
+		val=`cat $download_diag_result_file | grep 'DiagnosticsState' | awk -F '=' '{print $2}'`
+		if [ -z $val ]; then
+			val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+		fi
+	fi
+	export "${1}=$val"
+}
+
+get_download_diagnostics_state()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.DiagnosticsState"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$download_diag_result_file" ]; then
+			val="None"
+		else
+			val=`cat $download_diag_result_file | grep 'DiagnosticsState' | awk -F '=' '{print $2}'`
+			if [ -z $val ]; then
+				val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			fi
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_download_diagnostics_state()
+{
+	local parm="InternetGatewayDevice.DownloadDiagnostics.DiagnosticsState"
+	local val="$1"
+	case $action in
+		set_value)
+		local exist_val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+		if [ "$val" = "Requested" ]; then
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DiagnosticsState="$val"			
+			easycwmp_config_load
+			if [ "$exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $download_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+				rm -f '$download_diag_result_file'
+			fi
+			touch $download_diag_request_file
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_download_interface()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.Interface"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].Interface 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+check_download_interface()
+{
+	local interface=$1
+	local len=`expr length $interface`
+	if [ $len -gt 256 ]; then
+		return 1
+	fi
+
+	local val=`cat /proc/net/dev|grep $interface`
+
+	if [ -z "$val" ]; then
+		return 1
+	fi
+
+	return 0
+}
+
+set_download_interface()
+{
+	local parm="InternetGatewayDevice.DownloadDiagnostics.Interface"
+	local val="$1"
+	case "$action" in
+		set_value)
+#                check_download_interface "$val"
+#                local ret=$?
+#		if [ $ret = "0" ]; then
+			local exist_val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $download_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$download_diag_result_file'
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].Interface="$val"
+			easycwmp_config_load
+#		else
+#			return $E_INVALID_ARGUMENTS
+#		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_download_url()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.DownloadURL"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DownloadURL 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+check_download_url()
+{
+	local url=$1
+	local len=`expr length $url`
+	if [ $len -le 4 -o $len -gt 256 ];then
+		return 1
+	fi
+		
+	local val=`echo $url | grep "^http://\(\(\(\(25[0-5]\)\|\(2[0-4][0-9]\)\|\(1\?[0-9]\?[0-9]\)\.\)\{3\}\(\(25[0-5]\)\|\(2[0-4][0-9]\)\|\(1\?[0-9]\?[0-9]\)\)\)\|\(\([0-9a-z_\!~\*\'-\(\)]*\.\?\)\([0-9a-z][0-9a-z]\{0,61\}\)\?[0-9a-z]\.\([a-z]\{2,6\}\)\)\)\(:[0-9]\{1,4\}\)\?\([a-zA-Z/?_=]*\)\(\.[a-zA-Z0-9]\{1,5\}\)\?"`
+	if [ -z $val ]; then
+		return 1
+	fi
+
+	return 0
+}
+
+set_download_url()
+{
+	local parm="InternetGatewayDevice.DownloadDiagnostics.DownloadURL"
+	local val="$1"
+	case $action in
+		set_value)
+		check_download_url $val
+		local ret=$?
+		if [ "$ret" = "0" ]; then
+			local exist_val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $download_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$download_diag_result_file'
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DownloadURL="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_download_dscp()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.DSCP"
+	local permissions="1"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DSCP 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_download_dscp()
+{
+	local parm="InternetGatewayDevice.DownloadDiagnostics.DSCP"
+	local val="$1"
+	case $action in
+		set_value)
+		if [ $val -ge 0 -a $val -le 63 ]; then
+			local exist_val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $download_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$download_diag_result_file'
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DSCP="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_download_ethernet_priority()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.EthernetPriority"
+	local permissions="1"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].EthernetPriority 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_download_ethernet_priority()
+{
+	local parm="InternetGatewayDevice.DownloadDiagnostics.EthernetPriority"
+	local val="$1"
+	case $action in
+		set_value)
+		if [ $val -ge 0 -a $val -le 7 ]; then
+			local exist_val=`$UCI_GET easycwmp.@DownloadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $download_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$download_diag_result_file'
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@DownloadDiagnostics[0].EthernetPriority="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_download_ROMTime()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.ROMTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'ROMTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_download_BOMTime()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.BOMTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'BOMTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_download_EOMTime()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.EOMTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'EOMTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_download_test_bytes_received()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.TestBytesReceived"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'TestBytesReceived' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0	
+}
+
+get_download_total_bytes_received()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.TotalBytesReceived"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'TotalBytesReceived' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0	
+}
+
+get_download_tcp_open_Request_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.TCPOpenRequestTime"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'TCPOpenRequestTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0	
+}
+
+get_download_tcp_open_response_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DownloadDiagnostics.TCPOpenResponseTime"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_download_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $download_diag_result_file | grep 'TCPOpenResponseTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0	
+}
+
+get_download_diagnostics_object() 
+{
+	nl="$1"
+	case "$action" in
+		get_name)
+		[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.DownloadDiagnostics." "" "0"
+		;;
+	esac
+}
+
+get_download_diagnostics() 
+{
+	case "$1" in
+		InternetGatewayDevice.)
+		get_download_diagnostics_object 0
+		get_download_diagnostics_state "$2"
+		get_download_interface "$2"
+		get_download_url "$2"
+		get_download_dscp "$2"
+		get_download_ethernet_priority "$2"
+		get_download_ROMTime "$2"
+		get_download_BOMTime "$2"
+		get_download_EOMTime "$2"
+		get_download_test_bytes_received "$2"
+		get_download_total_bytes_received "$2"
+		get_download_tcp_open_request_time "$2"
+		get_download_tcp_open_response_time "$2"
+		return 0
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.)
+		get_download_diagnostics_object "$2"
+		get_download_diagnostics_state 0
+		get_download_interface 0
+		get_download_url 0
+		get_download_dscp 0
+		get_download_ethernet_priority 0
+		get_download_ROMTime 0
+		get_download_BOMTime 0
+		get_download_EOMTime 0
+		get_download_test_bytes_received 0
+		get_download_total_bytes_received 0
+		get_download_tcp_open_request_time 0
+		get_download_tcp_open_response_time 0
+		return 0
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.DiagnosticsState)
+		get_download_diagnostics_state 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.Interface)
+		get_download_interface 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.DownloadURL)
+		get_download_url 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.DSCP)
+		get_download_dscp 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.EthernetPriority)
+		get_download_ethernet_priority 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.ROMTime)
+		get_download_ROMTime 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.BOMTime)
+		get_download_BOMTime 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.EOMTime)
+		get_download_EOMTime 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TestBytesReceived)
+		get_download_test_bytes_received 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TotalBytesReceived)
+		get_download_total_bytes_received 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TCPOpenRequestTime)
+		get_download_tcp_open_request_time 0
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TCPOpenResponseTime)
+		get_download_tcp_open_response_time 0
+		return $?
+		;;
+	esac
+	return $E_INVALID_PARAMETER_NAME
+}
+
+set_download_diagnostics() 
+{
+	local fcode
+	case "$action" in
+		set_value)
+		fcode=$E_NON_WRITABLE_PARAMETER
+		;;
+		set_notification)
+		fcode=$E_NOTIFICATION_REJECTED
+		;;
+	esac
+
+	case "$1" in
+		InternetGatewayDevice.)
+		[ "$action" = "set_notification" ] && return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.)
+		[ "$action" = "set_notification" ] && return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.DiagnosticsState)
+		set_download_diagnostics_state "$2"
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.Interface)
+		set_download_interface "$2"
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.DownloadURL)
+		set_download_url "$2"
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.DSCP)
+		set_download_dscp "$2"
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.EthernetPriority)
+		set_download_ethernet_priority "$2"
+		return $?
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.ROMTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.BOMTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.EOMTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TestBytesReceived)
+		return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TotalBytesReceived)
+		return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TCPOpenRequestTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.DownloadDiagnostics.TCPOpenResponseTime)
+		return $fcode
+		;;		
+	esac
+	return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_download_diagnostics() { return 0; }
+
+add_object_download_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_download_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
+
+

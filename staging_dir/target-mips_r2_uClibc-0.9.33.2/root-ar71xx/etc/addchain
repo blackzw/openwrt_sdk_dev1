@@ -1,0 +1,19 @@
+iptables -N URLFILTER
+iptables -N IPFILTER
+#iptables -N MACFILTER
+
+iptables -N ACLINTERNET
+iptables -N ACLSTORAGE
+
+iptables -I INPUT -j ACLSTORAGE
+iptables -I FORWARD -j ACLINTERNET
+
+iptables -I FORWARD -j URLFILTER
+
+#iptables -I INPUT  -j IPFILTER    
+iptables -I FORWARD -j IPFILTER
+ 
+#iptables -I INPUT -j MACFILTER
+#iptables -I FORWARD -j MACFILTER
+
+

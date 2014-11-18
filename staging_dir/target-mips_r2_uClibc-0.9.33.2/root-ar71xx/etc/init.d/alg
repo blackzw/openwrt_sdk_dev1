@@ -1,0 +1,31 @@
+#!/bin/sh /etc/rc.common
+. /lib/functions.sh
+
+START=90
+
+config_load alg
+
+local ftp
+local pptp 
+local h323 
+local sip 
+local sip_port
+
+config_get ftp alg_switch ftp
+config_get pptp alg_switch pptp
+config_get h323 alg_switch h323
+config_get sip alg_switch sip
+config_get sip_port alg_switch sip_port
+
+
+start() {
+	echo "ftp $ftp" > /proc/net/netfilter/alg
+	echo "pptp $pptp" > /proc/net/netfilter/alg
+	echo "h323 $h323" > /proc/net/netfilter/alg
+	echo "sip $sip" > /proc/net/netfilter/alg
+	echo "sip_port $sip_port" > /proc/net/netfilter/alg
+	rmmod nf_nat_sip nf_conntrack_sip
+	insmod nf_conntrack_sip
+	insmod nf_nat_sip
+}
+

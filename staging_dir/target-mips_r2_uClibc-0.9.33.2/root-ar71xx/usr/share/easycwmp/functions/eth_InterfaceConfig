@@ -1,0 +1,222 @@
+#!/bin/sh
+# Copyright (C) 2012 Luka Perkov <freecwmp@lukaperkov.net>
+
+get_lanEtherinterface_enable() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Enable"
+	local val
+	local nl="$1"
+	local type="xsd:boolean"
+	local permissions="1"
+	case "$action" in
+		get_value)
+			ifconfig |grep eth0
+			if [ $? -eq 0 ];then
+				val="true"
+			else
+				val="false"
+			fi
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_lanEtherinterface_enable() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Enable"
+	local val="$1"
+	case $action in
+		set_value)
+			if [ "$val" = "true" ];then
+				ifconfig eth0 up
+			elif [ "$val" = "false" ];then
+				ifconfig eth0 down
+			else
+				return $E_INVALID_PARAMETER_VALUE
+			fi
+			;;
+		set_notification)
+			easycwmp_set_parameter_notification "$parm" "$val"
+			;;
+	esac
+}
+
+
+get_lanEtherinterface_status() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Status"
+	local val
+	local nl="$1"
+	local permissions="0"
+	case "$action" in
+		get_value)
+			val=`cat /sys/class/net/eth0/operstate`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_MACAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:string"
+	case "$action" in
+		get_value)
+			val=`cat /sys/class/net/eth0/address`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+
+get_lanEtherinterface_MaxBitRate() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MaxBitRate"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:string"
+	case "$action" in
+		get_value)
+			val=`swconfig dev switch0 show| grep  port\:0 |awk -F " " '{print $4}' |awk -F ":"  '{print $2}'`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_DuplexMode() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.DuplexMode"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:string"
+	case "$action" in
+		get_value)
+			val=`swconfig dev switch0 show| grep -E port\:0 |awk -F " " '{print $5} '`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_stats_BytesTx() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Stats.BytesSent"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+			val=`cat /sys/class/net/eth0/statistics/tx_bytes`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_stats_BytesRx() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Stats.BytesReceived"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+			val=`cat /sys/class/net/eth0/statistics/rx_bytes`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_stats_PacketsTx() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Stats.PacketsSent"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+			val=`cat /sys/class/net/eth0/statistics/tx_packets`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_stats_PacketsRx() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.Stats.PacketsReceived"
+	local val
+	local nl="$1"
+	local permissions="0"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+			val=`cat /sys/class/net/eth0/statistics/rx_packets`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lanEtherinterface_stats() {
+	get_lanEtherinterface_stats_BytesTx $1
+	get_lanEtherinterface_stats_BytesRx $1
+	get_lanEtherinterface_stats_PacketsTx $1
+	get_lanEtherinterface_stats_PacketsRx $1
+}
+
+get_lanEtherinterface() {
+	get_lanEtherinterface_enable $1
+	get_lanEtherinterface_status $1
+	get_lanEtherinterface_MACAddress $1
+	get_lanEtherinterface_MaxBitRate $1
+	get_lanEtherinterface_DuplexMode $1
+}

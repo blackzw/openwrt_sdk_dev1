@@ -1,0 +1,19 @@
+menuconfig IMAGEOPT
+	bool "Image configuration"
+	default n
+source "package/*/image-config.in"
+menu "Utilities"
+
+	config PACKAGE_helloworld
+		tristate "helloworld.................................................... Helloworld"
+		default y if DEFAULT_helloworld
+		default m if ALL
+		select PACKAGE_libpthread if USE_EGLIBC
+		select PACKAGE_libc
+		select PACKAGE_librt if USE_EGLIBC
+		help
+		 Helloworld
+		 OpenWrt Developers Team <openwrt-devel@openwrt.org>
+
+endmenu
+

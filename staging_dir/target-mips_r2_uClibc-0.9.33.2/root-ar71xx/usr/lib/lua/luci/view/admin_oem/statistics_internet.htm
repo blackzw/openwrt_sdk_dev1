@@ -1,0 +1,74 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+
+function uiPageInit(){
+	var connectionInfo = SDK.WanConnection.GetConnectionState();
+	var currentDownload = sys.covertNum(connectionInfo.DlBytes);
+	var currentUpload= sys.covertNum(connectionInfo.UlBytes);
+	var currentTotal = sys.covertNum(connectionInfo.DlBytes + connectionInfo.UlBytes);
+	var currentDuration = sys.getTimeDesc(connectionInfo.ConnectionTime);
+	uiShowCurrentStatistics(currentDownload,currentUpload,currentTotal,currentDuration);
+
+	var historyStatisticsInfo = SDK.Statistics.GetHistoryStatistics();
+	if(!historyStatisticsInfo.hasOwnProperty("TotalDownload")){
+		uiShowTotalStatistics(sys.covertNum(0),sys.covertNum(0),sys.covertNum(0),sys.getTimeDesc(0));
+	}else{
+		var totalDownload = sys.covertNum(historyStatisticsInfo.TotalDownload);
+		var totalUpload= sys.covertNum(historyStatisticsInfo.TotalUpload);
+		var totalTotal = sys.covertNum(historyStatisticsInfo.TotalUsage);
+		var totalDuration = sys.getTimeDesc(historyStatisticsInfo.TotalDuration);
+		uiShowTotalStatistics(totalDownload,totalUpload,totalTotal,totalDuration);
+	}
+
+}
+
+function uiShowCurrentStatistics(download,upload,total,duration){
+	$("#span_current_download").html(download);
+	$("#span_current_upload").html(upload);
+	$("#span_current_total").html(total);
+	$("#span_current_duration").html(duration);
+}
+
+function uiShowTotalStatistics(download,upload,total,duration){
+	$("#span_total_download").html(download);
+	$("#span_total_upload").html(upload);
+	$("#span_total_total").html(total);
+	$("#span_total_duration").html(duration);
+}
+</script>
+<div class="main-box border-notop">
+	<fieldset class="cbi-section">
+		<table class="table table-bordered table-tc">
+			<tr class="cbi-section-table-titles">
+				<th class="text-center" width="20%"><%:ids_type%></th>
+				<th class="text-center"><%:ids_netwrok_currentVolume%></th>
+				<th class="text-center"><%:ids_netwrok_totalVolume%></th>
+			</tr>
+			<tr class="cbi-section-table-row cbi-rowstyle-1">
+				<td><%:ids_download%></td>
+				<td><span id="span_current_download"></span></td>
+				<td><span id="span_total_download"></span></td>
+			</tr>
+			<tr class="cbi-section-table-row cbi-rowstyle-1">
+				<td><%:ids_upload%></td>
+				<td><span id="span_current_upload"></span></td>
+				<td><span id="span_total_upload"></span></td>
+			</tr>
+			<tr class="cbi-section-table-row cbi-rowstyle-1">
+				<td><%:ids_total%></td>
+				<td><span id="span_current_total"></span></td>
+				<td><span id="span_total_total"></span></td>
+			</tr>
+			<tr class="cbi-section-table-row cbi-rowstyle-1">
+				<td><%:ids_duration%></td>
+				<td><span id="span_current_duration"></span></td>
+				<td><span id="span_total_duration"></span></td>
+			</tr>
+		</table>
+	</fieldset>
+	<div class="alert alert-error"><%:ids_netwrok_statisticsDescription%></div>
+</div>
+<%+footer%>

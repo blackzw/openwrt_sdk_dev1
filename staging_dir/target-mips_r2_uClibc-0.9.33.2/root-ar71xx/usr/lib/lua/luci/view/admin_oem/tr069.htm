@@ -1,0 +1,135 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+
+function uiPageInit(){
+	uiShowTr069Settings();
+}
+
+function uiShowTr069Settings(){
+	var TR069Settings = SDK.Services.TR069.GetClientConfiguration() 
+	$("input[name='inform'][value='"+TR069Settings.Inform+"']").attr("checked",true);
+	$("#ipt-informInterval").val(TR069Settings.InformInterval);
+	$("#ipt-acsUrl").val(TR069Settings.AcsUrl);
+	$("#ipt-acsUserName").val(TR069Settings.AcsUserName);
+	$("#ipt-acsUserPassword").val(TR069Settings.AcsUserPassword);
+	$("#ipt-conReqUserName").val(TR069Settings.CPEusername);
+	$("#ipt-conReqUserPassword").val(TR069Settings.ConReqUserPassword);
+	$("#check-conReqAuthent").attr("checked",TR069Settings.ConReqAuthent == 1?true:false);
+}
+
+
+function uiSetTr069Settings(){
+	var conReqAuthent = $("#check-conReqAuthent").attr("checked");
+	var informVal = parseInt($("input[name='inform']:checked").val());
+	var $informInterval = $("#ipt-informInterval")
+	var informInterval = $informInterval.val();
+	if(informVal == 1 && !cbi_validators.uinteger.apply(informInterval)){
+		$informInterval.select().focus();
+	}else{
+		var TR069Settings = {
+			"Inform":informVal,
+			"InformInterval":informInterval,
+			"AcsUrl":$("#ipt-acsUrl").val(),
+			"AcsUserName":$("#ipt-acsUserName").val(),
+			"AcsUserPassword":$("#ipt-acsUserPassword").val(),
+			"ConReqUserName":$("#ipt-conReqUserName").val(),
+			"ConReqUserPassword":$("#ipt-conReqUserPassword").val(),
+			"ConReqAuthent":(conReqAuthent == true || conReqAuthent == "checked") ? 1:0
+		}
+		var result = SDK.Services.TR069.SetClientConfiguration(TR069Settings);
+		sys.alert(result.error == 0?"<%:Succeeded%>":"<%:failed!%>",function(){
+			uiPageInit();
+		});
+	}	
+	
+}
+
+</script>
+<div class="main-box border-notop">
+	<div class="main-box-form form-horizontal">
+		<div class="form">
+	    	<div class="cbi-map form-field">
+	    		<fieldset class="cbi-section-node">
+	    			<div style="width:600px;margin:0 auto;">
+		    			<h3><%:ids_tr069_client%></h3>
+		    			<p>
+		    				<%:ids_tr069_tips%>
+		    			</p>
+		    		</div>
+
+		    		<div class="control-group">
+        		        <label class="control-label"><%:ids_tr069_inform%>:</label>
+        		        <div class="controls">
+                            <label class="radio inline">
+            		            <input type="radio" name="inform" value="1" checked="checked"> <%:ids_enable%>
+                            </label>
+                            <label class="radio inline">
+            		            <input type="radio" name="inform" value="0"> <%:ids_disable%>
+                            </label>
+        		        </div>
+        		    </div>
+
+	    		    <div class="control-group">
+	    		        <label class="control-label"><%:ids_tr069_informInterval%>:</label>
+	    		        <div class="controls">
+	    		            <input type="text" class="cbi-input-text" id="ipt-informInterval"/>
+	    		        </div>
+	    		    </div>
+
+	    		    <div class="control-group">
+				        <label class="control-label"><%:ACS URL%>:</label>
+				        <div class="controls">
+				            <input type="text" class="cbi-input-text" id="ipt-acsUrl"/>
+				        </div>
+				    </div>
+
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_tr069_acsUsername%>:</label>
+				        <div class="controls">
+				            <input type="text" class="cbi-input-text" id="ipt-acsUserName"/>
+				        </div>
+				    </div>
+
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_tr069_acsPw%>:</label>
+				        <div class="controls">
+				            <input type="text" class="cbi-input-text" id="ipt-acsUserPassword"/>
+				        </div>
+				    </div>
+
+				    <div class="control-group" id="roam-auto-connect-field">
+				        <div class="controls">
+				        	<label class="checkbox">
+				            	<input class="cbi-input-checkbox" type="checkbox" id="check-conReqAuthent"> <%:ids_tr069_connRqAuth%>
+				            </label>
+				        </div>
+				    </div>
+
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_tr069_connRqUsername%>:</label>
+				        <div class="controls">
+				            <input type="text" class="cbi-input-text" id="ipt-conReqUserName"/>
+				        </div>
+				    </div>
+
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_tr069_connRqPw%>:</label>
+				        <div class="controls">
+				            <input type="text" class="cbi-input-text" id="ipt-conReqUserPassword"/>
+				        </div>
+				    </div>
+
+
+	    		</fieldset>
+	    	</div>
+	    	<div class="text-center">
+	    	    <button type="submit" class="btn btn-primary" onclick="uiSetTr069Settings()"><%:Apply%></button>
+	    	    <button type="button" class="btn btn-primary" onclick="uiPageInit()"><%:Cancel%></button>
+	    	</div>
+		</div>
+	</div>
+</div>
+<%+footer%>

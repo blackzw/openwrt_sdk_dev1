@@ -1,0 +1,2 @@
+cat: /home/zhong/openwrt/sdk/openwrt_sdk/path: No such file or directory
+Makefile:158: *** commands commence before first target.  Stop.

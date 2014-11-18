@@ -1,0 +1,6 @@
+/etc/config/acl
+/etc/config/alg
+/etc/config/dmz
+/etc/config/lanhost
+/etc/config/private_cloud
+/etc/config/system

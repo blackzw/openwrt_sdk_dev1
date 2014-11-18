@@ -1,0 +1,53 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+
+function uiPageInit(){
+	var sysInfo = SDK.System.GetSystemInfo();
+	var simInfo = SDK.SIM.GetSimStatus();
+	$("#span_device_name").html(sysInfo.DeviceName);
+	$("#span_imei").html(sysInfo.IMEI);
+	$("#span_software_ver").html(sysInfo.SwVersion);
+	$("#span_mac_address").html(sysInfo.MacAddress);
+	// $("#span_my_number").html(simInfo.MSISDN);
+	$("#span_imsi").html(simInfo.Imsi);
+	$("#span_module_ver").html(sysInfo.ModuleExtVersion);
+}
+</script>
+<div class="main-box border-all">
+	<fieldset class="cbi-section pt20">
+		<table class="table noborder">
+			<tr>
+				<td class="text-right w45" width="50%"><%:ids_system_deviceName%>:</td>
+				<td><span id="span_device_name"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_system_imei%>:</td>
+				<td><span id="span_imei"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_system_imsi%>:</td>
+				<td><span id="span_imsi"></span></td>
+			</tr>
+			<!--<tr>
+				<td class="text-right w45"><%:ids_system_myNumber%>:</td>
+				<td><span id="span_my_number"></span></td>
+			</tr> -->
+			<tr>
+				<td class="text-right w45"><%:ids_system_softwareVersion%>:</td>
+				<td><span id="span_software_ver"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_system_mSoftVersion%>:</td>
+				<td><span id="span_module_ver"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_filter_macAddress%>:</td>
+				<td><span id="span_mac_address"></span></td>
+			</tr>
+		</table>
+	</fieldset>
+</div>
+<%+footer%>

@@ -1,0 +1,326 @@
+<%+header%>
+<script>
+
+$(function($){
+	uiPageInit();
+	
+})
+
+var P_lanSettings = SDK.LAN.GetLanSettings();
+var dhcpServerStatus = P_lanSettings.DHCPServerStatus;
+var $apply = $("#apply");
+var baseHref_all = "<%=REQUEST_URI%>";
+
+function uiPageInit(){
+	$("#apply, #btnCancel").setBtnDisabled();
+	$("input,select").bind("input change keyup keydown paste",function(){
+		$("#apply, #btnCancel").removeBtnDisabled();
+	})
+	uiShowLanInfo();
+	$("#DHCPStatus").change(function(){
+		if($("#DHCPStatus").attr('checked')){
+			$("#lan-info-box").removeClass("hide");
+		}else{
+			$("#lan-info-box").addClass("hide");
+		}
+	});
+
+	$("input[type='text'], input[type='checkbox']").bind("onfocus click", function(){
+        $(".rule").remove();
+    });
+
+	$("#apply").click(function(){
+		setLanSettings();
+	});
+
+}
+
+function uiShowLanInfo(){
+	var LeaseTime = P_lanSettings.DHCPLeaseTime;
+	var $IPv4IPAddress = $("#IPv4IPAddress");
+	var $SubnetMask = $("#SubnetMask");
+	var $StartIPAddress = $("#StartIPAddress");
+	var $EndIPAddress = $("#EndIPAddress");
+	var $LeaseTime = $("#LeaseTime");
+
+	$IPv4IPAddress.val(P_lanSettings.IPv4IPAddress);
+	$SubnetMask.val(P_lanSettings.SubnetMask);
+	$StartIPAddress.val(P_lanSettings.StartIPAddress);
+	$EndIPAddress.val(P_lanSettings.EndIPAddress);
+	$LeaseTime.val(LeaseTime.substring(0, LeaseTime.length-1));
+	DHCPShow(dhcpServerStatus);
+
+	$IPv4IPAddress.bind("input change keyup keydown paste", function(){
+		IPv4IPAddressVal = $IPv4IPAddress.val();
+    	if(!isValidIpAddress(IPv4IPAddressVal)){    		
+			$IPv4IPAddress.showRule("<%:ids_lan_ipRule%>");
+			$apply.setBtnDisabled();
+	    }else{
+            $IPv4IPAddress.parent().find(".rule").remove();
+            $apply.removeBtnDisabled();
+        }
+    });
+    $StartIPAddress.bind("input change keyup keydown paste", function(){
+		StartIPAddressVal = $StartIPAddress.val();
+    	if(!isValidIpAddress(StartIPAddressVal)){    		
+			$StartIPAddress.showRule("<%:ids_lan_startIpRule%>");
+			$apply.setBtnDisabled();	        
+	    }else{
+            $StartIPAddress.parent().find(".rule").remove();
+            $apply.removeBtnDisabled();
+        }
+    });
+    $EndIPAddress.bind("input change keyup keydown paste", function(){
+		EndIPAddressVal = $EndIPAddress.val();
+    	if(!isValidIpAddress(EndIPAddressVal)){
+			$EndIPAddress.showRule("<%:ids_lan_endIpRule%>");
+			$apply.setBtnDisabled();	        
+	    }else{
+            $EndIPAddress.parent().find(".rule").remove();
+            $apply.removeBtnDisabled();
+        }
+    });
+    $SubnetMask.bind("input change keyup keydown paste", function(){
+		SubnetMask = $SubnetMask.val();
+    	if(!isValidSubnetMask(SubnetMask) || SubnetMask == "" || SubnetMask == " "){    		
+			$SubnetMask.showRule("<%:ids_lan_subnetMaskRule%>");
+			$apply.setBtnDisabled();	        
+	    }else{
+            $SubnetMask.parent().find(".rule").remove();
+            $apply.removeBtnDisabled();
+        }
+    });
+}
+
+function DHCPShow(dhcpServerStatus){
+	if(dhcpServerStatus == 1){
+		$("#lan-info-box").removeClass("hide");
+		$("#DHCPStatus").attr("checked","checked");
+	}else{
+		$("#lan-info-box").addClass("hide");
+		$("#DHCPStatus").attr("checked",false);
+	}
+}
+
+function setLanSettings(){
+	var $IPv4IPAddress = $("#IPv4IPAddress");
+	var $SubnetMask = $("#SubnetMask");
+	var $DHCPStatus = $("#DHCPStatus");
+	var $StartIPAddress = $("#StartIPAddress");
+	var $EndIPAddress = $("#EndIPAddress");
+	var $LeaseTime = $("#LeaseTime");
+
+	var IPv4IPAddressVal = $IPv4IPAddress.val();
+	var SubnetMaskVal = $.trim($SubnetMask.val());
+	var DHCPStatus = $DHCPStatus.val();
+	var StartIPAddressVal = $.trim($StartIPAddress.val());
+	var EndIPAddressVal = $.trim($EndIPAddress.val());
+	var LeaseTimeVal = $LeaseTime.val()+"h";
+
+	if(!isValidIpAddress(IPv4IPAddressVal)){    		
+		$IPv4IPAddress.showRule("<%:ids_lan_ipRule%>");
+		return false;
+    }
+    if(SubnetMaskVal == ""){
+		$SubnetMask.showRule("<%:ids_lan_subnetMaskEmpty%>");
+        return false;
+    }
+    if(!isValidSubnetMask(SubnetMaskVal)){
+		$SubnetMask.showRule("<%:ids_lan_subnetMaskRule%>");
+        return false;
+    }
+    
+
+	var dhcpStatus = $DHCPStatus.is(":checked") ? 1 : 0;
+
+	if(dhcpStatus == 1){
+		if(!isValidIpAddress(StartIPAddressVal)){    		
+			$StartIPAddress.showRule("<%:ids_lan_startIpRule%>");
+			return false;	        
+	    }
+
+	    if(!isValidIpAddress(EndIPAddressVal)){
+			$EndIPAddress.showRule("<%:ids_lan_endIpRule%>");
+			return false;	        
+	    }
+
+
+		if(!IsSameSubnetAddrs(StartIPAddressVal, IPv4IPAddressVal, SubnetMaskVal)){
+			$StartIPAddress.showRule("<%:ids_lan_startToEnd%>");
+	        return false;
+	    }
+
+		if(parseInt(StartIPAddressVal.split(".")[3]) <= parseInt(IPv4IPAddressVal.split(".")[3])){
+	   		$StartIPAddress.showRule("<%:ids_lan_startIpRule%>");
+	        return ;
+	   	}
+
+	    if(!is_broadcast_or_network_address(StartIPAddressVal,SubnetMaskVal)){
+			$StartIPAddress.showRule("<%:ids_lan_startIpRule%>");
+			return false;
+		}
+
+		if (!IsAvailableIpPool(IPv4IPAddressVal, StartIPAddressVal, EndIPAddressVal)) {
+			$StartIPAddress.showRule("<%:ids_lan_DHCPIpRule%>");
+			return false;
+		}
+
+		if(!IsSameSubnetAddrs(EndIPAddressVal, IPv4IPAddressVal, SubnetMaskVal)){
+			$EndIPAddress.showRule("<%:ids_lan_endToStart%>");
+	        return false;
+	   	}
+
+		if(parseInt(StartIPAddressVal.split(".")[3]) > parseInt(EndIPAddressVal.split(".")[3]) ){
+	   		$EndIPAddress.showRule("<%:ids_lan_endToStartIp%>");
+	        return false;
+	   	}
+
+	   	if(!is_broadcast_or_network_address(EndIPAddressVal,SubnetMaskVal)){
+			$EndIPAddress.showRule("<%:ids_lan_endIpRule%>");
+			return false;
+		}
+		sys.confirm("<%:ids_lan_restartWarn%>",function(){
+			var sendData = {
+				"IPv4IPAddress": IPv4IPAddressVal,
+				"SubnetMask": SubnetMaskVal,
+				"DHCPServerStatus": dhcpStatus,
+				"StartIPAddress": StartIPAddressVal,
+				"EndIPAddress": EndIPAddressVal,
+				"DHCPLeaseTime": LeaseTimeVal
+			}
+
+			var result = SDK.LAN.SetLanSettings(sendData).error;
+			
+			if (result == API_RESULT_SUCCESS){
+				sys.alert("<%:ids_succeeded%>", function(){
+					location.href = baseHref_all;
+				});
+			} else{
+				sys.alert("<%:ids_failed%>", function(){
+					$("#apply,#btnCancel").setBtnDisabled();
+				});
+			}
+		});
+	}else{
+		sys.confirm("<%:ids_lan_restartWarn%>",function(){
+			var sendData = {
+				"IPv4IPAddress": IPv4IPAddressVal,
+				"SubnetMask": SubnetMaskVal,
+				"DHCPServerStatus": dhcpStatus,
+				"StartIPAddress": P_lanSettings.StartIPAddress,
+				"EndIPAddress": P_lanSettings.EndIPAddress,
+				"DHCPLeaseTime": P_lanSettings.DHCPLeaseTime
+			}
+			var result = SDK.LAN.SetLanSettings(sendData).error;
+			
+			if (result == API_RESULT_SUCCESS){
+				sys.alert("<%:Succeeded!%>", function(){
+					location.href = baseHref_all;
+				});
+			} else{
+				sys.alert("<%:Failed!%>", function(){
+					$("#apply, #btnCancel").setBtnDisabled();
+				});
+			}
+		});
+	}
+	
+}
+
+function IsAvailableIpPool(homeIp, startIp, endIp) {
+	var H = homeIp.split(".");
+	var S = startIp.split(".");
+	var E = endIp.split(".");
+
+	var x3 = 256 * 256 * 256;
+	var x2 = 256 * 256;
+	var x1 = 256;
+
+	var H1 = (parseInt(H[0]) * x3) + (parseInt(H[1]) * x2) + (parseInt(H[2]) * x1) + parseInt(H[3]);
+	var S1 = (parseInt(S[0]) * x3) + (parseInt(S[1]) * x2) + (parseInt(S[2]) * x1) + parseInt(S[3]);
+	var E1 = (parseInt(E[0]) * x3) + (parseInt(E[1]) * x2) + (parseInt(E[2]) * x1) + parseInt(E[3]);
+
+	return (S1 > (H1 + 10) || E1 < H1);
+}
+
+function inet_aton(a) {
+    var n;
+    n = a.split(/\./);
+    if (n.length != 4) {
+        return 0;
+    }
+    return((n[0] << 24) | (n[1] << 16) | (n[2] << 8) | n[3]);
+}
+
+function is_broadcast_or_network_address(Ip, Netmask) {
+    var ip;
+    var mask;
+    var netaddr;
+    var broadaddr;
+    ip = inet_aton(Ip);
+    mask = inet_aton(Netmask);
+    netaddr = ip & mask;
+    broadaddr = netaddr | ~mask;
+    if (netaddr == ip || ip == broadaddr) {
+        return false;
+    }
+    return true;
+}
+
+</script>
+<div class="main-box border-notop form-horizontal">
+    <div class="control-group">
+        <label class="control-label"><%:ids_lan_ipv4IpAddress%>:</label>
+        <div class="controls">
+            <input type="text" id="IPv4IPAddress" />
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label"><%:ids_lan_subnetMask%>:</label>
+        <div class="controls">
+            <input type="text" id="SubnetMask" />
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label"><%:ids_lan_dhcpServer%>:</label>
+        <div class="controls">
+        	<label class="checkbox">
+            	<input type="checkbox" id="DHCPStatus" /><%:ids_enable%>
+            </label>
+        </div>
+    </div>
+
+    <div id="lan-info-box" class="hide">
+	    <div class="control-group ssid-box" id="">
+	        <label class="control-label"><%:ids_lan_startIpAddress%>:</label>
+	        <div class="controls">
+	            <input type="text" id="StartIPAddress" maxlength=""/>
+	        </div>
+	    </div>
+
+	    <div class="control-group ssid-box" id="">
+	        <label class="control-label"><%:ids_lan_endIpAddress%>:</label>
+	        <div class="controls">
+	            <input type="text" id="EndIPAddress"/>
+	        </div>
+	    </div>
+
+	    <div class="control-group">
+	        <label class="control-label"><%:ids_lan_dhcpLeaseTime%>:</label>
+		    <div class="controls">
+			    <select type="text" id="LeaseTime" class="span1" maxlength="">
+					<option>1</option>
+					<option>6</option>
+					<option>12</option>
+					<option>24</option>
+			    </select>
+			    <span><%:ids_hours%></span>
+		    </div>
+		</div>
+	</div>	
+	<div class="text-center">
+	    <button type="button" class="btn btn-primary" id="apply"><%:ids_apply%></button>
+	    <button type="button" class="btn btn-primary" id="btnCancel" onclick="uiPageInit()"><%:ids_cancel%></button>
+	</div>
+</div>
+<%+footer%>

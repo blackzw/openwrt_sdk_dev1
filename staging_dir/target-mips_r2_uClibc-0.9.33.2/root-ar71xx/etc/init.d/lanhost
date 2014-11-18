@@ -1,0 +1,60 @@
+#!/bin/sh
+
+local i=0
+getlanhostip(){
+        exec < /tmp/lan_host
+        while read line 
+        do
+        	result_ip0=$(echo $line | grep "Nmap scan report for")
+       		result_ip1=$(echo $line | grep "Nmap scan report for OpenWrt.lan")
+       		
+        	result_mac=$(echo $line | grep "MAC Address:")
+       		
+        	if [[ "x$result_ip0" != "x" ]]&&[ "x$result_ip1" = "x" ];then
+        	
+       			ipaddr=$(echo ${line##* })
+       			ipaddr=$(echo ${ipaddr%)*})
+       			ipaddr=$(echo ${ipaddr#*(}) 
+       			
+        		if [ $i -eq 0 ];then
+        			uci set lanhost.@lan[0].ipaddr="$ipaddr" 
+        		elif [ $i -eq 1 ];then
+        			 uci set lanhost.@lan[1].ipaddr="$ipaddr"
+        		fi
+        	fi
+        		
+        	if [[ "x$result_mac" != "x" ]];then
+        		macaddr=$(echo ${line:13:17})
+        		lowermacaddr=$(echo $macaddr | tr '[A-Z]' '[a-z]')
+        		 ! grep -q "$lowermacaddr" /tmp/wlan_station && {
+        			if [ $i -eq 0 ];then 
+								uci set lanhost.@lan[0].macaddr="$macaddr"        		
+        			else
+        				uci set lanhost.@lan[1].macaddr="$macaddr"
+        			fi
+        			i=$((i+1))
+        		}||{
+        			if [ $i -le 1 ];then
+        				uci set lanhost.@lan[$i].ipaddr=''
+        			fi
+      		}
+        	fi
+      		uci commit lanhost
+        	
+        done
+}
+
+lan_ipaddr=$(uci get network.lan.ipaddr)
+ipaddr3=$(expr substr "$lan_ipaddr" 1 10)
+
+iw dev wlan0 station dump > /tmp/wlan_station
+iw dev wlan0-1 station dump >> /tmp/wlan_station
+nmap -sP -PI -PT "$ipaddr3"1-254 > /tmp/lan_host
+
+uci set lanhost.@lan[0].ipaddr=''
+uci set lanhost.@lan[0].macaddr=''
+uci set lanhost.@lan[1].ipaddr=''
+uci set lanhost.@lan[1].macaddr=''
+
+getlanhostip
+

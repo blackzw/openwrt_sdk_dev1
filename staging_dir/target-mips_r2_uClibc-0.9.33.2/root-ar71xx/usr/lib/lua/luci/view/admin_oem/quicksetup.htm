@@ -1,0 +1,617 @@
+﻿<%+header%>
+<script type="text/javascript" src="<%=resource%>/wlan_country.js"></script>
+<script type="text/javascript" src="<%=resource%>/wlan.js"></script>
+<script>
+$(function($){
+    uiPageInit();
+})
+
+<%+admin_oem/wlanUiFn%>
+var P_wlanSettings = {};
+var P_networkSettings = {};
+var P_connectionMode = {};
+var p_802Mode;
+var P_channel;
+
+var currentStep = 0;
+var DEFUALT_PROFILE_VALUE=1;
+
+function uiPageInit(){
+	$("#step-network-box").show();
+	stepBtnBindEvent();
+	uiShowNetworkMode();
+	uiShowConnectionMode();
+	uiShowProfileList();
+	uiShowWLanSettings();
+}
+
+/**** step event start *****/
+function stepBtnBindEvent(){
+	$(".step-btn").click(function(){
+		
+		var step = $(this).attr("data-step-num");
+		var wlanFrequency = parseInt($("#sel-wlan-frequency").val());
+		if(wlanFrequency !=G_SDK_WLAN_MODE_FREQUENCY_DISABLE && step == 3){
+			if(!uiStepCheck2()){
+				return;
+			}
+		}
+		if(step == 4){
+			if(wlanFrequency !=G_SDK_WLAN_MODE_FREQUENCY_DISABLE && !uiStepCheck3()){
+				return;
+			}else{
+				confirmStep();
+			}
+		}
+		$(".common-box").hide();
+		$("#"+$(this).attr("data-step-for")).show();
+		showStep(step);
+	})
+}
+
+function showStep(step){
+	$(".ui-step li").removeClass("active").slice(0, step).addClass("active");
+	
+}
+/**** step event end *****/
+
+function uiShowNetworkMode(){
+	P_networkSettings = SDK.Network.GetNetworkSettings();
+	$("#sel_network_mode").val(P_networkSettings.NetworkMode);
+
+}
+function uiShowConnectionMode(){
+	P_connectionMode= SDK.WanConnection.GetConnectionSettings();
+	var connectMode = P_connectionMode.ConnectMode;
+	var roamingConnect = P_connectionMode.RoamingConnect;
+	$("#sel_connection_mode").val(connectMode);
+	uiShowRoamingField(connectMode);
+	$("#roam-auto-connect").attr("checked",roamingConnect == G_SDK_ROAMING_CONNECT_ON?true:false);
+}
+
+function uiShowRoamingField(connectMode){
+	var $roamAutoConnectField = $("#roam-auto-connect-field");
+	if(connectMode == G_SDK_CONNECT_MODE_MANUAL){
+		$roamAutoConnectField.hide();
+	}else{
+		$roamAutoConnectField.show();
+	}
+}
+
+function uiShowProfileList(){
+	var profileListInfo = SDK.Profile.GetProfileList();
+	var str = "";
+	if($.isArray(profileListInfo) && profileListInfo.length>0){
+		$.each(profileListInfo,function(i,v){
+			str+=v.Default==DEFUALT_PROFILE_VALUE?"<option selected value ="+ v.ProfileID + ">"+v.ProfileName+" (D)</option>":"<option value ="+ v.ProfileID + ">"+v.ProfileName+"</option>";
+		});
+	}
+	$("#sel_profile_name").html(str);
+}
+
+function uiShowWLanSettings(){
+	P_wlanSettings = SDK.Wlan.GetWlanSettings();
+	var wlanFrequency = P_wlanSettings.WlanFrequency;
+	P_channel = P_wlanSettings.Channel;
+	$("#sel-wlan-frequency").val(wlanFrequency);
+	uiShowWlanSettingsByFrequency(wlanFrequency);
+	uiShowWlanSecurityInfo(P_wlanSettings.SecurityMode);
+	$("#sel-waln-security").val(P_wlanSettings.SecurityMode);
+	$("#sel-waln-country").html(uiGetCountryList()).val(P_wlanSettings.CountryCode);
+	$("#sel-wpa-type").val(P_wlanSettings.WpaType);
+	
+	
+}
+
+function uiShowWlanSettingsByFrequency(wlanFrequency){
+	var $wlanOnBox = $(".js-wlan-on-box");
+	var $wlanOffBox = $(".js-wlan-off-box");
+	$iptSsid = $("#ipt-ssid");
+	$ssidBroadcast = $("#ssid-broadcast");
+
+	if(wlanFrequency!=G_SDK_WLAN_MODE_FREQUENCY_DISABLE && wlanFrequency != P_wlanSettings.WlanFrequency){
+		if(wlanFrequency==G_SDK_WLAN_MODE_FREQUENCY_2G){
+			p_802Mode = G_SDK_WLAN_802MODE_GN;
+		}else{
+			p_802Mode = G_SDK_WLAN_802MODE_AN;
+		}
+	}else{
+		p_802Mode = P_wlanSettings.WMode;
+	}
+
+	$("#sel-wpa-type").html(getWpaEncryptionHtmlStr(p_802Mode));
+
+	if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_2G){
+		$iptSsid.val(P_wlanSettings.Ssid);
+		$ssidBroadcast.attr("checked",P_wlanSettings.SsidHidden==G_SDK_WLAN_SSID_BROADCAST_ENABLE?true:false);
+		$wlanOffBox.hide();
+		$wlanOnBox.show();
+		P_channel = P_wlanSettings.Channel2g;
+	}else if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+		$iptSsid.val(P_wlanSettings.Ssid5G);
+		$ssidBroadcast.attr("checked",P_wlanSettings.SsidHidden5G==G_SDK_WLAN_SSID_BROADCAST_ENABLE?true:false);
+		$wlanOffBox.hide();
+		$wlanOnBox.show();
+		P_channel = P_wlanSettings.Channel5g;
+	}else{
+		$wlanOnBox.hide();
+		$wlanOffBox.show();
+		P_channel = P_wlanSettings.Channel;
+	}
+}
+
+function uiStepCheck2(){
+	var $ssid = $("#ipt-ssid");
+	var ssid = $ssid .val();
+	if(!checkSSID(ssid)){
+		$ssid.showRule("<%:ids_wlan_ssidRule%>");
+		return false;
+	}else{
+		return true;
+	}
+	
+}
+
+function uiStepCheck3(){
+	var securityMode = parseInt($("#sel-waln-security").val());
+	var $wepKey = $("#ipt-wep-key");
+	var wepKey = $wepKey.val();
+	var $wpaKey = $("#ipt-wpa-key");
+	var wpaKey = $wpaKey.val();
+	if(!check802ModeSecurity(p_802Mode,securityMode)){
+		sys.alert("802.11n mode does not support WEP!");
+		return false;
+	}
+	switch(parseInt(securityMode)){
+		case G_SDK_WLAN_SECURITY_MODE_WEP:
+			if(!isWepKey(wepKey)){
+				$wepKey.showRule("<%:ids_wlan_wepKeyRule%>");
+				return false;
+			}
+			break;
+		case G_SDK_WLAN_SECURITY_MODE_WPA:
+		case G_SDK_WLAN_SECURITY_MODE_WPA2:
+		case G_SDK_WLAN_SECURITY_MODE_WPA_WPA2:
+			if(!isWpaKey(wpaKey)){
+				$wpaKey.showRule("<%:ids_wlan_wpaKeyRule%>");
+				return false;
+			}
+			break;
+	}
+	return true;
+}
+
+function confirmStep(){
+	$("#span-network-mode").html($("#sel_network_mode option:selected").html());
+	$("#span-connection-mode").html($("#sel_connection_mode option:selected").html());
+	$("#span-profile-name").html($("#sel_profile_name option:selected").html());
+	$("#span-wlan").html($("#sel-wlan-frequency option:selected").html());
+
+	var $walnOnTbBox = $("#js-wlan-on-box");
+	if($("#sel-wlan-frequency").val() == G_SDK_WLAN_MODE_FREQUENCY_DISABLE){
+		$walnOnTbBox.hide();
+	}else{
+		$walnOnTbBox.show();
+	}
+
+	switch(parseInt($("#sel-waln-security").val())){
+		case G_SDK_WLAN_SECURITY_MODE_WEP:
+			$(".js-tr-wep").show();
+			$(".js-tr-wpa").hide();
+			$("#span-wepType").html($("#sel-wep-type option:selected").html());
+			$("#span-wepKey").html($("#ipt-wep-key").val());
+			break;
+		case G_SDK_WLAN_SECURITY_MODE_WPA:
+		case G_SDK_WLAN_SECURITY_MODE_WPA2:
+		case G_SDK_WLAN_SECURITY_MODE_WPA_WPA2:
+			$("#span-wpaType").html($("#sel-wpa-type option:selected").html());
+			$("#span-wpaKey").html($("#ipt-wpa-key").val());
+			$(".js-tr-wpa").show();
+			$(".js-tr-wep").hide();
+			break;
+		default:
+			$(".js-tr-wep,.js-tr-wpa").hide();
+	}
+
+	$("#span-ssid").html($("#ipt-ssid").val());
+	var broadcast = $("#ssid-broadcast").attr("checked")
+	$("#span-ssid-broadcast").html((broadcast =="checked" || broadcast ==true)?"<%:ids_enable%>":"<%:ids_disable%>");
+	$("#span-country").html($("#sel-waln-country option:selected").html());
+	$("#span-security").html($("#sel-waln-security option:selected").html());
+}
+
+function finishStep(){
+	var settingMsg = "";
+
+	var profileId = $("#sel_profile_name").val();
+	setNetworkSettings();
+	setConnectionMode();
+	if(profileId != "" && profileId !=  null){
+		setDefaultProfile();
+	}
+	setWlanSettings();
+
+	function setNetworkSettings(){
+		var networkMode = parseInt($("#sel_network_mode").val());
+		var result = SDK.Network.SetNetworkSettings(networkMode,P_networkSettings.NetselectionMode);
+	    switch(result.error){
+	        case 0:
+	            settingMsg += "<%:ids_netwrok_setNetworkModeSucceed%><br/>";
+	            break;
+	        default:
+	            settingMsg +=  "<%:ids_netwrok_setNetworkModeFail%><br/>"
+	    }
+	}
+
+	function setConnectionMode(){
+		var roamingConnect = $("#roam-auto-connect").attr("checked")
+		var roamingConnectVal = (roamingConnect =="checked" || roamingConnect ==true)? G_SDK_ROAMING_CONNECT_ON:G_SDK_ROAMING_CONNECT_OFF;
+		var connectMode = parseInt($("#sel_connection_mode").val());
+		var result = SDK.WanConnection.SetConnectionSettings(P_connectionMode.IdleTime,roamingConnectVal,connectMode);
+		if(result.error == 0){
+			settingMsg += "<%:ids_netwrok_setConnectionModeSucceed%><br/>";
+		}else{
+			settingMsg += "<%:ids_netwrok_setConnectionModeFail%><br/>";
+		}
+	}
+
+	function setDefaultProfile(){
+		var sendData={
+	        "ProfileID":profileId
+	    }
+		var result = SDK.Profile.SetDefaultProfile(sendData);
+		if(result.error == 0){
+			settingMsg += "<%:ids_profile_setDefaultSucceed%><br/>";
+		}else{
+			settingMsg += "<%:ids_profile_setDefaultFail%><br/>";
+		}
+	}
+
+	function setWlanSettings(){
+		var wlanState = SDK.Wlan.GetWlanState();
+		var wlanFrequency = parseInt($("#sel-wlan-frequency").val());
+		if(wlanState == G_SDK_WLAN_STATE_OFF){
+			if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_DISABLE){
+				showSucceeded();
+			}else{
+				setWlanSettingsEvent(wlanFrequency);
+			}
+		}else if(wlanState == G_SDK_WLAN_STATE_ON){
+			if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_DISABLE){
+				var setWlanStateResult = SDK.Wlan.SetWlanOff();
+				if(setWlanStateResult.error == 0){
+					showSucceeded();
+				}else{
+					showFailed();
+				}
+			}else{
+				setWlanSettingsEvent(wlanFrequency);
+			}
+		}else{
+			showFailed();
+		}
+
+		function setWlanSettingsEvent(wlanFrequency){
+			var wlanSettingsInfo = {};
+			var currentChannel;
+			var changeSSID = $("#ipt-ssid").val();
+			var countryCode = $("#sel-waln-country").val();
+			var ssidBroadcast = $("#ssid-broadcast").attr("checked");
+			var broadcastVal = (ssidBroadcast =="checked" || ssidBroadcast ==true)?G_SDK_WLAN_SSID_BROADCAST_ENABLE:G_SDK_WLAN_SSID_BROADCAST_DISABLE;
+
+			var isNeedChangeChannel = !(countryCode == P_wlanSettings.CountryCode && wlanFrequency == P_wlanSettings.WlanFrequency);
+			if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_2G){
+				wlanSettingsInfo.Ssid = changeSSID;
+				wlanSettingsInfo.SsidHidden = broadcastVal;
+				if(isNeedChangeChannel){
+					currentChannel = G_SDK_WLAN_CHANNEL_AUTO_2G;
+				}
+				wlanSettingsInfo.WMode = P_wlanSettings.WMode2g;//wlanUiFn.check802Mode(G_SDK_WLAN_MODE_FREQUENCY_2G,P_wlanSettings.WMode);
+			}else{
+				wlanSettingsInfo.Ssid5G = changeSSID;
+				wlanSettingsInfo.SsidHidden5G = broadcastVal;
+				wlanSettingsInfo.WMode = P_wlanSettings.WMode5g;//wlanUiFn.check802Mode(G_SDK_WLAN_MODE_FREQUENCY_5G,P_wlanSettings.WMode);
+				if(isNeedChangeChannel){
+					currentChannel = G_SDK_WLAN_CHANNEL_AUTO_5G;
+				}
+			}
+			wlanSettingsInfo.Channel = currentChannel;
+			wlanSettingsInfo.WlanFrequency = wlanFrequency;
+			wlanSettingsInfo.CountryCode = countryCode;
+
+			var china5G20M = countryCode == "CN" && currentChannel == 165;
+			if(!isSupport5Ghz40MCountry(countryCode) || china5G20M){
+				wlanSettingsInfo.Bandwidth = G_SDK_WLAN_BANDWIDTH_20;
+			}else{
+				wlanSettingsInfo.Bandwidth = P_wlanSettings.Bandwidth;
+			}
+			var securityMode = parseInt($("#sel-waln-security").val())
+			wlanSettingsInfo.SecurityMode = securityMode;
+			switch(securityMode){ 
+				case G_SDK_WLAN_SECURITY_MODE_WEP:
+						wlanSettingsInfo.WepType = parseInt($("#sel-wep-type").val());
+						wlanSettingsInfo.WepKey = $("#ipt-wep-key").val();
+					break;
+				case G_SDK_WLAN_SECURITY_MODE_WPA:
+				case G_SDK_WLAN_SECURITY_MODE_WPA2:
+				case G_SDK_WLAN_SECURITY_MODE_WPA_WPA2:
+						wlanSettingsInfo.WpaType = parseInt($("#sel-wpa-type").val());
+						wlanSettingsInfo.WpaKey = $("#ipt-wpa-key").val();
+					break;
+			}
+
+			var empty = {};
+			var postParams = $.extend(empty,P_wlanSettings,wlanSettingsInfo);
+			sys.prompt("<%:ids_waiting%>",-1);
+			SDK.Wlan.SetWlanSettings(postParams,function(result){
+				if(result.error == 0){
+					showSucceeded();
+				}else{
+					showFailed();
+				}
+			})
+		}
+
+		function showSucceeded(){
+			settingMsg += "<%:ids_wlan_setWlanSucceed%><br/>";
+			sys.alert(settingMsg,function(){
+				location.reload();
+			})
+		}
+
+		function showFailed(){
+			settingMsg += "<%:ids_wlan_setWlanFail%><br/>";
+			sys.alert(settingMsg,function(){
+				location.reload();
+			})
+		}
+		
+	}
+}
+
+
+</script>
+<style>
+	.common-box{display:none;margin:40px auto 0}
+	.ui-step{ overflow:hidden; text-align: center;}
+	.ui-step li{display: inline; padding:6px 20px; border: 1px solid #eee; float:left; margin-left:110px; background:#ccc; color:#fff;}
+	.ui-step li.active{ background:#00b0f0;}
+	.js-wlan-on-box,.js-wlan-off-box,.encryption-box,.js-tr-wpa, .js-tr-wep{display: none;}
+	.js-wlan-off-box{padding:20px 40px;}
+	.table tbody.js-wlan-on-box{border:none}
+</style>
+<div id="main_box" class="main-box border-notop">
+	<ul class="ui-step pt20">
+		<li class="active" data-step-box="step-network-box"><%:ids_internet%></li>
+		<li data-step-box="step-wlan-box"><%:ids_wlan_wlan%></li>
+		<li data-step-box="step-wlan-security-box"><%:ids_wlan_wlanSecurity%></li>
+		<li data-step-box="step-confirm-box"><%:ids_confirm%></li>
+	</ul>
+
+	<div class="form common-box" id="step-network-box">
+		<div class="cbi-map form-horizontal">
+			<fieldset class="cbi-section-node">
+			    <div class="control-group">
+			        <label class="control-label"><%:ids_netwrok_netMode%>:</label>
+			        <div class="controls">
+			            <select class="cbi-input-select" id="sel_network_mode">
+			                <option value="0" selected="selected"><%:ids_auto%></option>
+			                <option value="1"><%:2G only%></option>
+			                <option value="2"><%:3G only%></option>
+			                <option value="3"><%:4G only%></option>
+			            </select>
+			        </div>
+			    </div>
+				<div class="control-group">
+				    <label class="control-label"><%:ids_netwrok_connectionMode%>:</label>
+				    <div class="controls">
+				      	<select id="sel_connection_mode" onchange="uiShowRoamingField($(this).val())">
+			                <option value="1" selected="selected"><%:ids_auto%></option>
+			                <option value="0"><%:ids_manual%></option>
+			            </select>
+			            <div class="pt10" id="roam-auto-connect-field">
+				            <label class="checkbox">			            
+					        <input type="checkbox" id="roam-auto-connect" checked="checked"><%:ids_netwrok_roamingEnable%>
+					      	</label>
+				  		</div>
+				    </div>
+			  	</div>
+
+			    <div class="control-group">
+				    <label class="control-label"><%:ids_profile_name%>:</label>
+				    <div class="controls">
+				      	<select id="sel_profile_name"></select>
+				    </div>
+			  	</div>
+		    	<div class="control-group">
+				    <div class="controls">
+				      	<button type="reset" class="btn btn-primary step-btn" data-step-num="2" data-step-for="step-wlan-box"><%:ids_next%></button>
+				    </div>
+			  	</div>
+			</fieldset>
+		</div>
+	</div>
+
+	<div class="form common-box form-horizontal" id="step-wlan-box">
+		<div class="cbi-map">
+			<fieldset class="cbi-section-node">
+				<div class="control-group">
+				    <label class="control-label"><%:ids_wlan_wlan%>:</label>
+				    <div class="controls">
+				      	<select id="sel-wlan-frequency" onchange="uiShowWlanSettingsByFrequency($(this).val())">
+			                <option value="1"><%:2.4GHz%></option>
+    		                <option value="2"><%:5GHz%></option>
+    		                <option value="0" selected="selected"><%:ids_off%></option>
+			            </select>
+				    </div>
+			  	</div>
+			  	<div class="js-wlan-on-box">
+				  	<div class="control-group">
+					    <label class="control-label"><%:ids_wlan_countryRegion%>:</label>
+					    <div class="controls">
+					      	<select id="sel-waln-country"></select>
+					    </div>
+				  	</div>
+					<div class="control-group">
+					    <label class="control-label"><%:SSID%>:</label>
+					    <div class="controls">
+					      	<input type="text" class="iptText" id="ipt-ssid" maxlength="32"/>
+					    </div>
+				  	</div>
+
+					<div class="control-group">
+					    <label class="control-label"><%:ids_wlan_ssidBroadcast%>:</label>
+					    <div class="controls">
+					    	<label class="checkbox">
+						        <input class="cbi-input-checkbox" type="checkbox" id="ssid-broadcast"><%:ids_enable%>
+						    </label>
+					    </div>
+				  	</div>
+			 	</div>
+				<div class="control-group">
+				    <div class="controls">
+				      	<button type="submit" class="btn btn-primary step-btn" data-step-num="1" data-step-for="step-network-box"><%:ids_back%></button>
+				      	<button type="submit" class="btn btn-primary step-btn" data-step-num="3" data-step-for="step-wlan-security-box"><%:ids_next%></button>
+				    </div>
+				</div>
+			</fieldset>
+		</div>
+	</div>
+
+	<div class="form common-box form-horizontal"  id="step-wlan-security-box">
+		<div class="cbi-map">
+			<fieldset class="cbi-section-node">
+				<div class="js-wlan-on-box">
+				   <div class="control-group">
+	    		        <label class="control-label"><%:ids_wlan_security%>:</label>
+	    		        <div class="controls">
+	    		            <select class="cbi-input-select" id="sel-waln-security" onchange="uiShowWlanSecurityInfo($(this).val())">
+	    		                <option value="0" selected="selected"><%:ids_disable%></option>
+	    		                <option value="1"><%:WEP%></option>
+	    		                <option value="2"><%:WPA%></option>
+	    		                <option value="3"><%:WPA2%></option>
+	    		                <option value="4"><%:WPA/WPA2%></option>
+	    		            </select>
+	    		        </div>
+	    		    </div>
+	    		    <div class="encryption-box" id="wep-box">
+		    		    <div class="control-group">
+		    		        <label class="control-label"><%:ids_wlan_wepEncryption%>:</label>
+		    		        <div class="controls">
+		    		            <select class="cbi-input-select" id="sel-wep-type">
+		    		                <option value="0" selected="selected"><%:ids_open%></option>
+		    		                <option value="1"><%:ids_share%></option>
+		    		            </select>
+		    		        </div>
+		    		    </div>
+
+		    		    <div class="control-group">
+					        <label class="control-label"><%:WEP-Key:%></label>
+					        <div class="controls">
+					            <input type="password" class="iptText" id="ipt-wep-key" maxlength="26"/>
+					        </div>
+					    </div>
+					</div>
+					<div class="encryption-box" id="wpa-box">
+					    <div class="control-group">
+		    		        <label class="control-label"><%:ids_wlan_wpsEncryption%>:</label>
+		    		        <div class="controls">
+		    		            <select class="cbi-input-select" id="sel-wpa-type">
+		    		                <option value="0" selected="selected"><%:TKIP%></option>
+		    		                <option value="1"><%:AES%></option>
+		    		                <option value="2"><%:ids_auto%></option>
+		    		            </select>
+		    		        </div>
+		    		    </div>
+
+		    		    <div class="control-group">
+					        <label class="control-label"><%:WPA-PSK:%></label>
+					        <div class="controls">
+					            <input type="password" class="cbi-input-text" id="ipt-wpa-key" maxlength="63"/>
+					        </div>
+					    </div>
+					</div>
+				    <div class="control-group" id="show-password-box">
+				        <label class="control-label"></label>
+		    		    <div class="controls">
+		    		    	<label class="checkbox">
+			    		        <input type="checkbox" id="check-showPw" onclick="uiDisplayWLanEncryptionKey($(this).attr('checked'))"/><%:ids_wlan_showPw%>
+		    		        </label>
+		    		    </div>
+		    		</div>
+	    		</div>
+	    		<div class="js-wlan-off-box text-center"><%:ids_wlan_wlanOff%></div>
+				<div class="control-group">
+				    <div class="controls">
+				    	<button type="submit" class="btn btn-primary step-btn"  data-step-num="2" data-step-for="step-wlan-box"><%:ids_back%></button>
+		    	    	<button type="reset" class="btn btn-primary step-btn"  data-step-num="4" data-step-for="step-confirm-box"><%:ids_next%></button>
+				    </div>
+			  	</div>
+			</fieldset>
+			
+		</div>
+	</div>
+
+	<div class="common-box" id="step-confirm-box">
+		<fieldset class="cbi-section">
+			<table class="table noborder">
+				<tr class="cbi-section-table-row">
+					<td class="text-right w45"><%:ids_netwrok_netMode%>:</td>
+					<td><span id="span-network-mode"></span></td>
+				</tr>
+				<tr class="cbi-section-table-row">
+					<td class="text-right w45"><%:ids_netwrok_connectionMode%>:</td>
+					<td><span id="span-connection-mode"></span></td>
+				</tr>
+				<tr class="cbi-section-table-row">
+					<td class="text-right w45"><%:ids_profile_name%>:</td>
+					<td><span id="span-profile-name"></span></td>
+				</tr>
+				<tr class="cbi-section-table-row">
+					<td class="text-right w45"><%:ids_wlan_wlan%>:</td>
+					<td><span id="span-wlan"></span></td>
+				</tr>
+				<tbody class="js-wlan-on-box">
+					<tr class="cbi-section-table-row">
+						<td class="text-right w45"><%:SSID%>:</td>
+						<td><span id="span-ssid"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row">
+						<td class="text-right w45"><%:ids_wlan_ssidBroadcast%>:</td>
+						<td><span id="span-ssid-broadcast"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row">
+						<td class="text-right w45"><%:ids_wlan_countryRegion%>:</td>
+						<td><span id="span-country"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row">
+						<td class="text-right w45"><%:ids_wlan_security%>:</td>
+						<td><span id="span-security"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row js-tr-wpa">
+						<td class="text-right w45"><%:WPA-PSK%>:</td>
+						<td><span id="span-wpaType"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row js-tr-wpa">
+						<td class="text-right w45"><%:ids_wlan_wpsEncryption%>:</td>
+						<td><span id="span-wpaKey"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row js-tr-wep">
+						<td class="text-right w45"><%:WEP-PSK:%></td>
+						<td><span id="span-wepType"></span></td>
+					</tr>
+					<tr class="cbi-section-table-row js-tr-wep">
+						<td class="text-right w45"><%:ids_wlan_wepEncryption%>:</td>
+						<td><span id="span-wepKey"></span></td>
+					</tr>
+				</tbody>
+			</table>	
+		</fieldset>
+		<div class="text-center">
+	    	<button type="submit" class="btn btn-primary step-btn" data-step-num="3" data-step-for="step-wlan-security-box"><%:ids_back%></button>
+	    	<button type="submit" class="btn btn-primary" onclick="finishStep()"><%:ids_finish%></button>
+	  	</div>
+	</div>
+</div>
+
+<%+footer%>

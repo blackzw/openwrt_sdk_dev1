@@ -1,0 +1,15 @@
+#!/bin/sh
+
+sleep 2
+
+while true;
+do
+  inform_result=`cd /usr/lib/lua/luci/webapi;lua inform_after_connected.lua`
+  if [ $inform_result = "done" ]; then
+    break
+  fi
+  sleep 3
+done
+exit 0
+
+

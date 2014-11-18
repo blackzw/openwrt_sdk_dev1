@@ -1,0 +1,427 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+
+	/* Global */
+	var G_SDK_SERVER_STATE_DISABLE = 0;
+	var G_SDK_SERVER_STATE_ENABLE = 1;
+
+	var G_SDK_SERVICES_TYPE_SAMBA = 0;
+	var G_SDK_SERVICES_TYPE_DLNA = 1;
+	var G_SDK_SERVICES_TYPE_FTP = 2;
+
+	var G_SDK_DevType_MM100 = 0;
+	var G_SDK_DevType_USBDEVICE = 1;
+	var sambaState, ftpState;
+	var samba_devtype, samba_anonymous, samba_password, samba_userName, samba_authtype;
+	var ftp_devtype, ftp_anonymous, ftp_password, ftp_userName, ftp_authtype;
+	var externalStorageDeviceState;//0:no device,1:mm100,2:usb device,3,mm100 and usb device;
+	var baseHref_all = "<%=REQUEST_URI%>";
+
+
+	function uiPageInit()
+	{
+		initGlobleParam();
+		formload();
+
+		var $sambaState = $("#samba_State").show(0);
+		var $ftpState = $("#ftp_state").show(0);
+		showSwitchStatus($sambaState, sambaState, G_SDK_SERVER_STATE_ENABLE);
+		showSwitchStatus($ftpState, ftpState, G_SDK_SERVER_STATE_ENABLE);
+
+		$("#samba_btnCancel,#ftp_btnCancel,#samba_btnApply,#ftp_btnApply").setBtnDisabled();
+		initShow(sambaState, ftpState);
+
+		$("#samba_btnCancel,#ftp_btnCancel").click(function()
+		{
+			location.href = baseHref_all;
+		});
+		$("#samba-map input[type='radio'],#samba-map input[type='checkbox']").bind("input change keyup keydown paste", function()
+		{
+			$("#samba_btnCancel,#samba_btnApply").removeBtnDisabled();
+		});
+		$("#ftp-map input[type='radio'],#ftp-map input[type='checkbox']").bind("input change keyup keydown paste", function()
+		{
+			$("#ftp_btnCancel,#ftp_btnApply").removeBtnDisabled();
+		});
+		$("#samba_btnApply").click(sambaApply);
+		$("#ftp_btnApply").click(ftpApply);
+
+	}
+	function initGlobleParam()
+	{
+		sambaState = 0;
+		ftpState = 0;
+		samba_devtype = 0;
+		samba_anonymous = 0;
+		samba_password = "";
+		samba_userName = "";
+		samba_authtype = 0;
+		ftp_devtype = 0;
+		ftp_anonymous = 0;
+		ftp_password = "";
+		ftp_userName = "";
+		ftp_authtype = 0;
+		externalStorageDeviceState = 0;
+	
+	}
+	function formload()
+	{
+		sambaInfo = SDK.Services.GetServiceState(0);
+		ftpInfo = SDK.Services.GetServiceState(2);
+		if (!sambaInfo.hasOwnProperty("error"))
+		{
+			sambaState = sambaInfo.result.State || 0;
+		}
+		if (!ftpInfo.hasOwnProperty("error"))
+		{
+			ftpState = ftpInfo.result.State || 0;
+		}
+		var externalDeviceInfo = SDK.System.GetExternalStorageDevice();
+		if (externalDeviceInfo != null && !externalDeviceInfo.hasOwnProperty("error"))
+		{
+			var externalDeviceList = externalDeviceInfo.DeviceList;
+			var deviceCount = externalDeviceList.length;
+			if (deviceCount == 2)
+			{
+				externalStorageDeviceState = 3;
+			} else if (deviceCount == 1)
+			{
+				var devtype = externalDeviceList[0].DevType;
+				if (devtype == 0)
+				{
+					externalStorageDeviceState = 1;
+				} else if (devtype == 1)
+				{
+					externalStorageDeviceState = 2;
+				}
+			} else
+			{
+				externalStorageDeviceState = 0;
+			}
+		}
+		var sambaConfigInfo = SDK.Services.GetSambaSettings();
+		var ftpConfigInfo = SDK.Services.GetFtpSettings();
+		if (!sambaConfigInfo.hasOwnProperty("error"))
+		{
+			samba_devtype = sambaConfigInfo.result.DevType || 0;
+			samba_anonymous = sambaConfigInfo.result.Anonymous || 0;
+			samba_password = sambaConfigInfo.result.Password || "";
+			samba_userName = sambaConfigInfo.result.UserName || "";
+			samba_authtype = sambaConfigInfo.result.AuthType || 0;
+		}
+		if (!ftpConfigInfo.hasOwnProperty("error"))
+		{
+			ftp_devtype = ftpConfigInfo.result.DevType || 0;
+			ftp_anonymous = ftpConfigInfo.result.Anonymous || 0;
+			ftp_password = ftpConfigInfo.result.Password || "";
+			ftp_userName = ftpConfigInfo.result.UserName || "";
+			ftp_authtype = ftpConfigInfo.result.AuthType || 0;
+		}
+	}
+
+	function initShow(sambaState, ftpState)
+	{
+		initShowSamba();
+		initShowFtp();
+		if (externalStorageDeviceState == 1)
+		{
+			$("#samba-map input[name=sambaStorage][value=0]").attr("checked", true);
+			$("#samba-map input[name=sambaStorage][value=1]").attr("disabled", true);
+			$("#ftp-map input[name=ftpStorage][value=0]").attr("checked", true);
+			$("#ftp-map input[name=ftpStorage][value=1]").attr("disabled", true);
+		} else if (externalStorageDeviceState == 2)
+		{
+			$("#samba-map input[name=sambaStorage][value=1]").attr("checked", true);
+			$("#samba-map input[name=sambaStorage][value=0]").attr("disabled", true);
+			$("#ftp-map input[name=ftpStorage][value=1]").attr("checked", true);
+			$("#ftp-map input[name=ftpStorage][value=0]").attr("disabled", true);
+		} else if (externalStorageDeviceState == 0)
+		{
+			//$(".control-group").hide();
+			$("#ftp-map input,#samba-map input").attr("disabled", true);
+			$("#samba-map input[name=sambaStorage]").attr("checked", false);
+			$("#ftp-map input[name=ftpStorage]").attr("checked", false);
+		}
+
+		if (sambaState == 1)
+		{
+			$("#sambaContent").show();
+		} else
+		{
+			$("#sambaContent").hide();
+		}
+		if (ftpState == 1)
+		{
+			$("#ftpContent").show();
+		} else
+		{
+			$("#ftpContent").hide();
+		}
+	}
+
+	function initShowSamba()
+	{
+		$("#samba-map input[name=sambaStorage][value=" + samba_devtype + "]").attr("checked", true);
+		initCheckBox($("#samba-map input[name=sambaAnonymous]"), samba_anonymous);
+		$("#samba-map input[name=sambaRights][value=" + samba_authtype + "]").attr("checked", true);
+
+	}
+	function initShowFtp()
+	{
+		$("#ftp-map input[name=ftpStorage][value=" + ftp_devtype + "]").attr("checked", true);
+		initCheckBox($("#ftp-map input[name=ftpAnonymous]"), ftp_anonymous);
+		$("#ftp-map input[name=ftpRights][value=" + ftp_authtype + "]").attr("checked", true);
+	}
+	function sambaApply()
+	{
+		var params = {
+			"ServiceType" : G_SDK_SERVICES_TYPE_SAMBA,
+			"State" : $("#samba_State").is(":checked") ? 1 : 0
+		};
+		var params_detail = {
+			"DevType" : parseInt($("input[name='sambaStorage']:checked").val()),
+			"Anonymous" : $("#samba-map input[name=sambaAnonymous]").is(":checked") ? 1 : 0,
+			"UserName" : samba_userName,
+			"Password" : samba_password,
+			"AuthType" : parseInt($("input[name='sambaRights']:checked").val())
+		};
+
+		var result_one = SDK.Services.SetServiceState(params.ServiceType, params.State).error;
+		if (result_one == API_RESULT_SUCCESS)
+		{
+			var result = 0;
+			if (externalStorageDeviceState != 0)
+			{
+				result = SDK.Services.SetSambaSettings(params_detail.DevType, params_detail.Anonymous, params_detail.UserName, params_detail.Password, params_detail.AuthType).error;
+			} else
+			{
+				result = 0;
+			}
+			if (result == API_RESULT_SUCCESS)
+			{
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					location.href = baseHref_all;
+				});
+			} else
+			{
+				sys.alert("<%:ids_failed%>", function()
+				{
+					$("#samba_btnApply,#samba_btnCancel").setBtnDisabled();
+				});
+			}
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#samba_btnApply,#samba_btnCancel").setBtnDisabled();
+			});
+		}
+	}
+	function ftpApply()
+	{
+		var params = {
+			"ServiceType" : G_SDK_SERVICES_TYPE_FTP,
+			"State" : $("#ftp_state").is(":checked") ? 1 : 0
+		};
+		var params_detail = {
+			"DevType" : parseInt($("input[name='ftpStorage']:checked").val()),
+			"Anonymous" : $("input[name=ftpAnonymous]").is(":checked") ? 1 : 0,
+			"UserName" : ftp_userName,
+			"Password" : ftp_password,
+			"AuthType" : parseInt($("input[name='ftpRights']:checked").val())
+		};
+
+		var result_one = SDK.Services.SetServiceState(params.ServiceType, params.State).error;
+		if (result_one == API_RESULT_SUCCESS)
+		{
+			var result = 0;
+			if (externalStorageDeviceState != 0)
+			{
+				result = SDK.Services.SetFtpSettings(params_detail.DevType, params_detail.Anonymous, params_detail.UserName, params_detail.Password, params_detail.AuthType).error;
+			} else
+			{
+				result = 0;
+			}
+			if (result == API_RESULT_SUCCESS)
+			{
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					location.href = baseHref_all;
+				});
+			} else
+			{
+				sys.alert("<%:ids_failed%>", function()
+				{
+					$("#ftp_btnApply,#ftp_btnCancel").setBtnDisabled();
+				});
+			}
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#ftp_btnApply,#ftp_btnCancel").setBtnDisabled();
+			});
+		}
+
+	}
+	/* Util */
+	function initCheckBox(obj, state)
+	{
+		if (state == 1)
+		{
+			obj.attr("checked", true);
+		} else
+		{
+			obj.attr("checked", false);
+		}
+	}
+	function showSwitchStatus($CheckedState, InitStateValue, STATE_ENABLE)
+	{
+		var CheckedState = $CheckedState.is(":checked");
+		var $hasSwitch = $CheckedState.parent();
+		$hasSwitch.addClass("has-switch");
+		if (InitStateValue == STATE_ENABLE)
+		{
+			CheckedState = true;
+		} else
+		{
+			CheckedState = false;
+		}
+		if (CheckedState == true)
+		{
+			$hasSwitch.removeClass("switch-off").addClass("switch-on");
+			$CheckedState.attr("checked", true);
+		} else
+		{
+			$hasSwitch.removeClass("switch-on").addClass("switch-off");
+			$CheckedState.attr("checked", false);
+		}
+		$hasSwitch.click(function()
+		{
+			var $divPart = $hasSwitch.parent().parent();
+			$divPart.find("button").removeBtnDisabled();
+			$divPart.find(".border-notop").show();
+			if (CheckedState == true)
+			{
+				$hasSwitch.removeClass("switch-on").addClass("switch-off");
+				CheckedState = false;
+				$CheckedState.attr("checked", false);
+			} else
+			{
+				$hasSwitch.removeClass("switch-off").addClass("switch-on");
+				CheckedState = true;
+				$CheckedState.attr("checked", true);
+			}
+		});
+	}
+
+	function checkStausInvalid(status)
+	{
+		if (status == 0 || status == 1)
+		{
+			return true;
+		} else
+		{
+			return false;
+		}
+	}
+	function isNumber(str)
+	{
+		return /^-?[0-9]+$/.test(str);
+	}
+	function checkStringInvalid(str)
+	{
+		if (str == null || str == "")
+		{
+			return false;
+		} else
+		{
+			return true;
+		}
+	}
+</script>
+
+<div id="SambaFtp_page_map" class="main-box border-notop form-horizontal">
+	<div class="cbi-map">
+		<div id="samba-map" class="mb20">
+			<div class="title-switch-checkbox border-all">
+				<h4 class="pull-left"><%:ids_samba_menuSamba%></h4>
+				<div class="switch-checkbox-right">
+					<input id="samba_State" name="samba-status-value" type="checkbox" style="display:none;"/>
+				</div>
+			</div>
+			<div class="border-notop hidden" id="sambaContent">
+				<div class="control-group">
+					<label class="control-label"><%:ids_samba_defautStorage%>:</label>
+					<div class="controls">
+						<label class="radio inline"> <input type="radio" name="sambaStorage" value="0" checked="checked" /><%:ids_samba_storageMm100%>
+						</label> <label class="radio inline"> <input type="radio" name="sambaStorage" value="1" /><%:ids_samba_storageUsb%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_samba_anonymous%>:</label>
+					<div class="controls">
+						<label class="checkbox  inline"> <input type="checkbox" name="sambaAnonymous" /><%:ids_enable%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_samba_rights%>:</label>
+					<div class="controls">
+						<label class="radio inline"> <input type="radio" name="sambaRights" value="0" checked="checked" /><%:ids_samba_readOnly%>
+						</label> <label class="radio inline"> <input type="radio" name="sambaRights" value="1" /><%:ids_samba_readWrite%>
+						</label>
+					</div>
+				</div>
+				<div class="text-center">
+					<button class="btn btn-primary" id="samba_btnApply"><%:ids_apply%></button>
+					<button class="btn btn-primary" id="samba_btnCancel"><%:ids_cancel%></button>
+				</div>
+			</div>
+		</div>
+		<div id="ftp-map" class="mb20">
+			<div class="title-switch-checkbox border-all">
+				<h4 class="pull-left"><%:ids_samba_menuFtp%></h4>
+				<div class="switch-checkbox-right">
+					<input id="ftp_state" name="ftp-status-value" type="checkbox" style="display:none;"/>
+				</div>
+			</div>
+			<div class="border-notop hidden" id="ftpContent">
+				<div class="control-group">
+					<label class="control-label"><%:ids_samba_defautStorage%>:</label>
+					<div class="controls">
+						<label class="radio inline"> <input type="radio" name="ftpStorage" value="0" checked="checked" /><%:ids_samba_storageMm100%>
+						</label> <label class="radio inline"> <input type="radio" name="ftpStorage" value="1" /><%:ids_samba_storageUsb%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_samba_anonymous%>:</label>
+					<div class="controls">
+						<label class="checkbox  inline"> <input type="checkbox" name="ftpAnonymous" value="0" /><%:ids_enable%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_samba_rights%>:</label>
+					<div class="controls">
+						<label class="radio inline"> <input type="radio" name="ftpRights" value="0" checked="checked" /><%:ids_samba_readOnly%>
+						</label> <label class="radio inline"> <input type="radio" name="ftpRights" value="1" /><%:ids_samba_readWrite%>
+						</label>
+					</div>
+				</div>
+				<div class="text-center">
+					<button class="btn btn-primary" id="ftp_btnApply"><%:ids_apply%></button>
+					<button class="btn btn-primary" id="ftp_btnCancel"><%:ids_cancel%></button>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<%+footer%>

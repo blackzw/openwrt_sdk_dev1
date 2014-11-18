@@ -1,0 +1,151 @@
+# QoS configuration for OpenWrt
+
+# INTERFACES:
+# TODO: The line speed of wan SHOULD be dynimically adapted with the connection type.
+config interface wan
+	option classgroup  "Default"
+	option enabled      0
+	option upload       50000
+	option download     150000
+
+# RULES:
+config default
+	option target       "Express"
+	option proto        "udp"
+	option pktsize      "-500"
+config reclassify
+	option target       "Priority"
+	option proto        "icmp"
+config default
+	option target       "Bulk"
+	option portrange    "1024-65535"
+config reclassify
+	option target       "Priority"
+	option proto        "tcp"
+	option pktsize      "-128"
+	option mark         "!Bulk"
+	option tcpflags     "SYN"
+config reclassify
+	option target       "Priority"
+	option proto        "tcp"
+	option pktsize      "-128"
+	option mark	        "!Bulk"
+	option tcpflags     "ACK"
+
+
+# Don't change the stuff below unless you
+# really know what it means :)
+
+config classgroup "Default"
+	option classes      "Priority Express Normal Bulk"
+	option default      "Normal"
+
+
+config class "Priority"
+	option packetsize  400
+	option maxsize     400
+	option avgrate     10
+	option priority    20
+config class "Priority_down"
+	option packetsize  1000
+	option avgrate     10
+
+
+config class "Express"
+	option packetsize  1000
+	option maxsize     800
+	option avgrate     50
+	option priority    10
+
+config class "Normal"
+	option packetsize  1500
+	option packetdelay 100
+	option avgrate     10
+	option priority    5
+config class "Normal_down"
+	option avgrate     20
+
+config class "Bulk"
+	option avgrate     1
+	option packetdelay 200
+	
+# The L7 protocols matchs(max 16) SHOULD be configurable according to the requirements.
+config l7_protocols_1
+  option value   "aim"
+  option display "ICQ"
+  option enabled 1
+  
+config l7_protocols_2
+  option value   "bittorrent"
+  option display "BitTorrent"
+  option enabled 1
+  
+config l7_protocols_3
+  option value   "edonkey"
+  option display "eMule"
+  option enabled 1
+  
+config l7_protocols_4
+  option value   "fasttrack"
+  option display "FastTrack"
+  option enabled 0
+  
+config l7_protocols_5
+  option value   "ftp"
+  option display "FTP"
+  option enabled 1
+  
+config l7_protocols_6
+  option value   "gnutella"
+  option display "Gnutella"
+  option enabled 0
+  
+config l7_protocols_7
+  option value   "http"
+  option display "HTTP"
+  option enabled 1
+  
+config l7_protocols_8
+  option value   "ident"
+  option display "Ident"
+  option enabled 0
+  
+config l7_protocols_9
+  option value   "irc"
+  option display "IRC"
+  option enabled 0
+  
+config l7_protocols_10
+  option value   "jabber"
+  option display "Jabber"
+  option enabled 0
+   
+config l7_protocols_11
+  option value   "msnmessenger"
+  option display "MSN"
+  option enabled 1
+  
+config l7_protocols_12
+  option value   "ntp"
+  option display "NTP"
+  option enabled 1
+  
+config l7_protocols_13
+  option value   "pop3"
+  option display "POP3"
+  option enabled 1
+  
+config l7_protocols_14
+  option value   "smtp"
+  option display "SMTP"
+  option enabled 1
+  
+config l7_protocols_15
+  option value   "ssl"
+  option display "SSL"
+  option enabled 1
+  
+config l7_protocols_16
+  option value   "vnc"
+  option display "VNC"
+  option enabled 0

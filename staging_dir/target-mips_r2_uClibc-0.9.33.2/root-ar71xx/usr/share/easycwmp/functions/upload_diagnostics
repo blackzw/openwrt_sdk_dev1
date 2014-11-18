@@ -1,0 +1,700 @@
+#!/bin/sh
+
+
+
+get_upload_diagnostics_state_inter()
+{
+	local val=""
+	if [ ! -e "$download_diag_result_file" ]; then
+		val="None"
+	else
+		val=`cat $download_diag_result_file | grep 'DiagnosticsState' | awk -F '=' '{print $2}'`
+		if [ -z $val ]; then
+			val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+		fi
+	fi
+	export "${1}=$val"
+}
+
+get_upload_diagnostics_state()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.DiagnosticsState"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$upload_diag_result_file" ]; then
+			val="None"
+		else
+			val=`cat $upload_diag_result_file | grep 'DiagnosticsState' | awk -F '=' '{print $2}'`
+			if [ -z $val ]; then
+				val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			fi
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+#get_upload_file_size <size>
+get_upload_file_size()
+{
+	local fileLen=`$UCI_GET easycwmp.@UploadDiagnostics[0].TestFileLength 2> /dev/null`
+	if [ $fileLen -gt $upload_max_size -o $fileLen -lt 0 ]; then
+		fileLen = 1024
+		$UCI_SET easycwmp.@UploadDiagnostics[0].TestFileLength="$fileLen"
+		easycwmp_config_load
+	fi
+
+	export "${1}=${fileLen}"
+}
+
+set_upload_diagnostics_state()
+{
+	local parm="InternetGatewayDevice.UploadDiagnostics.DiagnosticsState"
+	local val="$1"
+	case $action in
+		set_value)
+		local exist_val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+		if [ "$val" = "Requested" ]; then
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DiagnosticsState="$val"			
+			easycwmp_config_load
+			if [ "$exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $upload_diag_result_file' | grep -v 'grep' | awk '{print $1}' | xargs kill`
+				rm -f '$upload_diag_result_file'
+			fi
+			
+			touch $upload_diag_request_file
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_upload_interface()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.Interface"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UploadDiagnostics[0].Interface 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+check_upload_interface()
+{
+	local interface = $1
+	local len=`expr length $interface`
+	if [ $len -gt 256 ]; then
+		return false
+	fi
+	
+	local val=`cat /proc/net/dev | grep $interface`
+	if [ -z $val ]; then
+		return false
+	fi
+
+	return true
+}
+
+set_upload_interface()
+{
+	local parm="InternetGatewayDevice.UploadDiagnostics.Interface"
+	local val="$1"
+	case $action in
+		set_value)
+#		check_upload_interface "$val"
+#                local ret=$?
+#		if [ $ret = "0" ]; then
+			local exist_val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $upload_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$upload_diag_result_file'
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@UploadDiagnostics[0].Interface="$val"
+			easycwmp_config_load
+#		else
+#			return $E_INVALID_ARGUMENTS
+#		fi		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_upload_url()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.UploadURL"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UploadDiagnostics[0].UploadURL 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+check_upload_url()
+{
+	local url=$1
+	local len=`expr length $url`
+	if [ $len le 4 -o $len gt 256 ];then
+		return 1
+	fi
+		
+	local val=`echo $url | grep "^http://\(\(\(\(25[0-5]\)\|\(2[0-4][0-9]\)\|\(1\?[0-9]\?[0-9]\)\.\)\{3\}\(\(25[0-5]\)\|\(2[0-4][0-9]\)\|\(1\?[0-9]\?[0-9]\)\)\)\|\(\([0-9a-z_\!~\*\'-\(\)]*\.\?\)\([0-9a-z][0-9a-z]\{0,61\}\)\?[0-9a-z]\.\([a-z]\{2,6\}\)\)\)\(:[0-9]\{1,4\}\)\?\([a-zA-Z/?_=]*\)\(\.[a-zA-Z0-9]\{1,5\}\)\?"`
+	if [ -z $val ]; then
+		return 1
+	fi
+
+	return 0
+}
+
+set_upload_url()
+{
+	local parm="InternetGatewayDevice.UploadDiagnostics.UploadURL"
+	local val="$1"
+	case $action in
+		set_value)
+		check_upload_url $val
+		local ret=$?
+		if [ "$ret" = "0" ]; then
+			local exist_val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $upload_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$upload_diag_result_file'
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@UploadDiagnostics[0].UploadURL="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_upload_dscp()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.DSCP"
+	local permissions="1"
+	local type="xsd:unsignedInt"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DSCP 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_upload_dscp()
+{
+	local parm="InternetGatewayDevice.UploadDiagnostics.DSCP"
+	local val="$1"
+	case $action in
+		set_value)
+		if [ $val -ge 0 -a $val -le 63 ]; then
+			local exist_val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $upload_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$upload_diag_result_file'
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DSCP="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_upload_ethernet_priority()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.EthernetPriority"
+	local permissions="1"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UploadDiagnostics[0].EthernetPriority 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_upload_ethernet_priority()
+{
+	local parm="InternetGatewayDevice.UploadDiagnostics.EthernetPriority"
+	local val="$1"
+	case $action in
+		set_value)
+		if [ $val -ge 0 -a $val -le 7 ]; then
+			local exist_val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $upload_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$upload_diag_result_file'
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@UploadDiagnostics[0].EthernetPriority="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_upload_test_file_length()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.TestFileLength"
+	local permissions="1"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UploadDiagnostics[0].TestFileLength 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_upload_test_file_length()
+{
+	local parm="InternetGatewayDevice.UploadDiagnostics.TestFileLength"
+	local val="$1"
+	case $action in
+		set_value)
+		if [ $val -ge 0 -a $val -le $upload_max_size ]; then
+			local exist_val=`$UCI_GET easycwmp.@UploadDiagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "exist_val" = "Requested" ]; then
+				`ps | grep '/usr/bin/wget --diagnosticsfile $upload_diag_result_file'| grep -v 'grep' | awk '{print $1}' | xargs kill`
+			fi
+			rm -f '$upload_diag_result_file'
+			$UCI_SET easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+			$UCI_SET easycwmp.@UploadDiagnostics[0].TestFileLength="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_upload_ROMTime()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.ROMTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_upload_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $upload_diag_result_file | grep 'ROMTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_upload_BOMTime()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.BOMTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_upload_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $upload_diag_result_file | grep 'BOMTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_upload_EOMTime()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.EOMTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_upload_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $upload_diag_result_file | grep 'EOMTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_upload_total_bytes_sent()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.TotalBytesSent"
+	local permissions="0"
+	local type="xsd:unsignedInt"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_upload_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $upload_diag_result_file | grep 'TotalBytesSent' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0	
+}
+
+get_upload_tcp_open_Request_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.TCPOpenRequestTime"
+	local permissions="0"
+	local type="xsd:unsignedInt"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_upload_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $upload_diag_result_file | grep 'TCPOpenRequestTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_upload_tcp_open_response_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UploadDiagnostics.TCPOpenResponseTime"
+	local permissions="0"
+	local type="xsd:unsignedInt"	
+	case "$action" in
+		get_value)
+		local exist_val=""
+		get_upload_diagnostics_state_inter exist_val
+		if [ "$exist_val" = "Completed" ];then
+			val=`cat $upload_diag_result_file | grep 'TCPOpenResponseTime' | awk -F '=' '{print $2}'`
+		else
+			val=""
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_upload_diagnostics_object() 
+{
+	nl="$1"
+	case "$action" in
+		get_name)
+		[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.UploadDiagnostics." "" "0"
+		;;
+	esac
+}
+
+get_upload_diagnostics() 
+{
+	case "$1" in
+		InternetGatewayDevice.)
+		get_upload_diagnostics_object 0
+		get_upload_diagnostics_state "$2"
+		get_upload_interface "$2"
+		get_upload_url "$2"
+		get_upload_dscp "$2"
+		get_upload_ethernet_priority "$2"
+		get_upload_test_file_length "$2"
+		get_upload_ROMTime "$2"
+		get_upload_BOMTime "$2"
+		get_upload_EOMTime "$2"
+		get_upload_total_bytes_sent "$2"
+		get_upload_tcp_open_request_time "$2"
+		get_upload_tcp_open_response_time "$2"
+		return 0
+		;;
+		InternetGatewayDevice.UploadDiagnostics.)
+		get_upload_diagnostics_object "$2"
+		get_upload_diagnostics_state 0
+		get_upload_interface 0
+		get_upload_url 0
+		get_upload_dscp 0
+		get_upload_ethernet_priority 0
+		get_upload_test_file_length 0
+		get_upload_ROMTime 0
+		get_upload_BOMTime 0
+		get_upload_EOMTime 0
+		get_upload_total_bytes_sent 0
+		get_upload_tcp_open_request_time 0
+		get_upload_tcp_open_response_time 0
+		return 0
+		;;
+		InternetGatewayDevice.UploadDiagnostics.DiagnosticsState)
+		get_upload_diagnostics_state 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.Interface)
+		get_upload_interface 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.UploadURL)
+		get_upload_uploadurl 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.DSCP)
+		get_upload_dscp 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.EthernetPriority)
+		get_upload_ethernet_priority 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TestFileLength)
+		get_upload_test_file_length 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.ROMTime)
+		get_upload_ROMTime 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.BOMTime)
+		get_upload_BOMTime 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.EOMTime)
+		get_EOMTime 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TotalBytesSent)
+		get_upload_total_bytes_sent 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TCPOpenRequestTime)
+		get_upload_tcp_open_request_time 0
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TCPOpenResponseTime)
+		get_upload_tcp_open_response_time 0
+		return $?
+		;;
+	esac
+	return $E_INVALID_PARAMETER_NAME
+}
+
+set_upload_diagnostics() 
+{
+	local fcode
+	case "$action" in
+		set_value)
+		fcode=$E_NON_WRITABLE_PARAMETER
+		;;
+		set_notification)
+		fcode=$E_NOTIFICATION_REJECTED
+		;;
+	esac
+
+	case "$1" in
+		InternetGatewayDevice.)
+		[ "$action" = "set_notification" ] && return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.)
+		[ "$action" = "set_notification" ] && return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.DiagnosticsState)
+		set_upload_diagnostics_state "$2"
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.Interface)
+		set_upload_interface "$2"
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.UploadURL)
+		set_upload_url "$2"
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.DSCP)
+		set_upload_dscp "$2"
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.EthernetPriority)
+		set_upload_ethernet_priority "$2"
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TestFileLength)
+		set_upload_test_file_length "$2"
+		return $?
+		;;
+		InternetGatewayDevice.UploadDiagnostics.ROMTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.BOMTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.EOMTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TestBytesReceived)
+		return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TotalBytesReceived)
+		return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TCPOpenRequestTime)
+		return $fcode
+		;;
+		InternetGatewayDevice.UploadDiagnostics.TCPOpenResponseTime)
+		return $fcode
+		;;		
+	esac
+	return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_upload_diagnostics() { return 0; }
+
+add_object_upload_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_upload_diagnostics() { return $E_INVALID_PARAMETER_NAME; }

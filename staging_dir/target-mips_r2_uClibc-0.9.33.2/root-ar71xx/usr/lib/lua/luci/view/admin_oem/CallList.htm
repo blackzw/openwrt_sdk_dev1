@@ -1,0 +1,339 @@
+<%+header%>
+<script>
+	$(function($){
+		uiPageInit();
+	});
+
+	/* 	global variable */
+    var CallLog_Type_All = 0;
+	var CallLog_Type_Incoming = 1;
+	var CallLog_Type_Outcoming = 2;
+	var CallLog_Type_Missed = 3;
+
+	var pageLength = 10;
+    var pageNum = getUrlPara("pageNum");
+    pageNum = (isNaN(pageNum) || pageNum == "") ? 1 : pageNum;
+   
+	var CallLogType,CallLogList; //callLog list type:all、incoming、outcoming、missed、	
+	var currentCount;
+	var total_count, totalPage, currentPage;
+	var baseHref;
+
+	/* 	logic control */
+
+	function uiPageInit()	{  
+		$("#callLog_list_map").hide();
+		$("#text_show_box").hide();
+		uiShowCallLogList();
+	}
+
+	function uiShowCallLogList()
+	{   $("#btnDelete").setBtnDisabled();	
+		formload();		
+		initShowList();
+		initShowListAffiliated();
+	}
+
+	function formload()
+	{  
+	    CallLogType = "<%=REQUEST_URI%>".split("voice/")[1];
+		baseHref = "<%=REQUEST_URI%>".split("voice")[0] + "voice";	
+		if(CallLogType == undefined){
+			CallLogType = "incoming";			
+		}	
+	}
+
+	function initShowListAffiliated(){	
+		$("#listPage").html(currentPage + "/" + totalPage);
+		$("#spanPageNum").html(currentPage);
+		$("#pageNum").val(currentPage);
+		showSelectPage(totalPage, currentPage);
+
+		$("input[name='ckbAllCallLog']").change(function()
+		{
+			if ($(this).attr("checked") == "checked")
+			{
+				$("input[name='tdunread']").each(function()
+				{
+					$(this).attr("checked", "checked");
+				});
+			} else
+			{
+				$("input[name='tdunread']").each(function()
+				{
+					$(this).attr("checked", null);
+				});
+			}
+			listenMark();
+		});
+		$("input[name='ckbAllCallLog']").attr("checked", null);
+		$("#btnDelete").click(deletePageEvent);
+		$("input[name='tdunread']").change(function()
+		{
+			listenMark();
+		});
+
+		$("#btnPrev").click(function()
+		{
+			switchPage("previous");
+		});
+
+		$("#btnNext").click(function()
+		{
+			switchPage("next");
+		});
+
+		$("#pageNum").change(function()
+		{
+			changePage($(this).val());
+		});
+	}
+
+	/* list---show---start */
+
+	function initShowList(){
+		switch (CallLogType)
+		{
+		case "incoming":			
+			CallLogList = SDK.CallLog.GetCallLogList(CallLog_Type_Incoming);
+			break;
+		case "outgoing":			
+			CallLogList = SDK.CallLog.GetCallLogList(CallLog_Type_Outcoming);			
+			break;
+		case "missed":			
+			CallLogList = SDK.CallLog.GetCallLogList(CallLog_Type_Missed);			
+			break;
+		default:
+			break;
+		}
+		if(CallLogList.hasOwnProperty("CallLogList"))
+		{
+			 total_count = CallLogList.CallLogList.length;	
+		   totalPage = getTotalPage(total_count);
+		   currentPage = getCurrentPage();	
+		   showCallLogItem(CallLogList.CallLogList);	
+		   $("#callLog_list_map").show();
+		}
+		else{			
+			$("#text_show_box").show().html("<%:ids_call_noList%>");
+			return;
+		}		
+		
+	}
+
+	function showCallLogItem(calllogList){
+        StartIndex = (pageNum-1)*pageLength;
+        EndIndex = pageNum*pageLength;
+        EndIndex = EndIndex<total_count?EndIndex:total_count;        
+        
+		if (calllogList != null)
+		{
+			calllogList = calllogList.slice(StartIndex,EndIndex)
+			for ( var e in calllogList)
+			{
+				var connectlnbox = calllogList[e];
+				if (connectlnbox != "")
+				{
+					addCallLogItem(connectlnbox);
+				}
+			}
+		}
+	}
+
+	function addCallLogItem(itemvalue){
+		var _callLog_id = itemvalue.Id, _callLog_type = itemvalue.Type, _callLog_Telnumber = itemvalue.TelNumber, _callLog_time = itemvalue.Time, _callLog_duration = itemvalue.DurationTime;
+		var itemTable = $(".calllogTable");
+		var itemStr = "".substring(0, 20);
+			_callLog_duration = getTimeDesc(_callLog_duration);	
+			_callLog_time = show_SD_time(_callLog_time);
+			itemStr += "<td>" + _callLog_Telnumber + "</td>";
+			itemStr += "<td>" + _callLog_time + "</td>";
+			itemStr += "<td>" + _callLog_duration + "</td>";
+			itemStr += "<td><input name=tdunread type=checkbox value="+_callLog_id+" /></td>";
+			itemTable.append("<tr class='cbi-section-table-row'>" + itemStr + "</tr>");
+
+		$("#callLog_list_map .cbi-section-table tr:even").addClass("cbi-rowstyle-1");
+		$("#callLog_list_map .cbi-section-table tr:odd").addClass("cbi-rowstyle-2");
+	}
+
+	/* list---show---end */	
+
+	/* Util---function---start */
+		function showSelectPage(num, curPage)
+	{
+		var i;
+		var str = "";
+		for (i = 1; i <= num; i++)
+		{
+			str += "<option value=" + i + ">" + i + "</option>";
+		}
+		$("#pageNum").html(str).val(curPage);
+	}
+
+	function switchPage(operation)
+	{
+		var switchNum = 1;
+		var currentPage = $.trim($("#spanPageNum").html());
+		if ("next" == operation)
+		{
+			switchNum = parseInt(currentPage) + 1;
+		} else if ("previous" == operation)
+		{
+			switchNum = parseInt(currentPage) - 1;
+		}
+		if (switchNum < 1)
+		{
+			switchNum = 1;
+		} else if (switchNum > totalPage)
+		{
+			switchNum = totalPage;
+		}
+		changePage(switchNum);
+
+	}
+
+	function changePage(num)
+	{
+		url = baseHref + "/" + CallLogType + "?pageNum=" + num;
+		window.location.href = url;
+	}
+
+	function getCurrentPage()
+	{
+		var curPage = 1;
+		if (pageNum != "" && pageNum != null && pageNum <= totalPage)
+		{
+			curPage = pageNum;
+		} else if (pageNum > totalPage)
+		{
+			curPage = totalPage;
+		}		
+		return curPage;
+	}
+
+	function getTotalPage(total_count)
+	{
+		var totalPage = 1;
+		if (total_count < pageLength)
+		{
+			return totalPage;
+		} else
+		{
+			totalPage = Math.ceil(total_count / pageLength);
+		}
+		return totalPage;
+
+	}
+
+	function listenMark(){
+		var $ckbItem = $("input[name='tdunread']");
+		var ckbItemLeng = $ckbItem.length;
+		var $ckbSmaChecked = $("input[name='tdunread']:checked");
+		var ckbSmaCheckedLeng = $ckbSmaChecked.length;
+		var $ckbSelectAllItem = $("input[name='ckbAllCallLog']");
+		if (ckbItemLeng > 0 && ckbSmaCheckedLeng == ckbItemLeng)
+		{
+			$ckbSelectAllItem.attr("checked", true);
+		} else
+		{
+			$ckbSelectAllItem.attr("checked", false);
+		}
+        
+		if (ckbSmaCheckedLeng == 0)
+		{
+			$("#btnDelete").setBtnDisabled();
+		} else
+		{
+			$("#btnDelete").removeBtnDisabled();
+		}
+	}
+
+	function deletePageEvent(){
+		sys.confirm("<%:ids_call_deleteCallRecord%>", function()
+		{
+			var checkboxArray = $("input[name='tdunread']");
+			var resultNum = 0;
+			if (checkboxArray != null && checkboxArray.length > 0)
+			{
+				$("#btnDelete").setBtnDisabled();
+				$("input[name='tdunread']:checked").each(function()
+				{
+					var result = SDK.CallLog.DeleteCallLog($(this).val());
+					if (result == API_RESULT_SUCCESS)
+					{
+						resultNum++;
+					}
+				});
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					location.reload();
+				});
+			} else
+			{
+				sys.alert("<%:ids_call_selectCallPrompt%>");
+			}
+		});
+	}
+
+	function getTimeDesc(time_sec){
+        var that = this;
+        var days = Math.floor(time_sec / 86400);
+        var hours = Math.floor((time_sec - days * 86400) / 3600);
+        var minutes = Math.floor((time_sec - days * 86400 - hours * 3600) / 60);
+        var secs = Math.floor(time_sec - days * 86400 - hours * 3600 - minutes * 60);
+        var str = "";       
+        str += ((hours < 10) ? "0" : "") + hours + ":";
+        str += ((minutes < 10) ? "0" : "") + minutes + ":";
+        str += ((secs < 10) ? "0" : "") + secs;
+        return str;
+    }
+
+    function show_SD_time(call_time){
+        var time_i = parseInt(call_time);
+        var all_time_space = new Date(time_i * 1000);
+        var nowDateTime = new Date(parseInt((all_time_space.getTime())));
+
+        var year = nowDateTime.getFullYear();
+        var month = nowDateTime.getMonth() + 1;
+        var day = nowDateTime.getDate();
+        var hours = nowDateTime.getHours();
+        var minutes = nowDateTime.getMinutes();
+        var secs = nowDateTime.getSeconds();
+        var str = "";  
+        str += year + "-";
+        str += ((month < 10) ? "0" : "") + month + "-";
+        str += ((day < 10) ? "0" : "") + day + " ";    
+        str += ((hours < 10) ? "0" : "") + hours + ":";
+        str += ((minutes < 10) ? "0" : "") + minutes + ":";
+        str += ((secs < 10) ? "0" : "") + secs;
+        return str; 
+    }
+	/* Util---function---end */
+</script>
+<div class="main-box border-notop border-notop">
+<!-- No CallLog List -->
+<div id="text_show_box"></div>
+<!-- Page CallLog List -->
+<div id="callLog_list_map">	
+	<div class="text-right mt10 mb20">		
+		<button class="btn btn-primary" id="btnDelete"><%:ids_delete%></button>
+	</div>
+	<fieldset class="cbi-section">
+		<table class="table table-bordered calllogTable">
+			<tr class="cbi-section-table-titles">				
+				<th width="30%" class="cbi-section-table-cell" style="text-align:left"><%:ids_number%></th>
+				<th width="30%" class="cbi-section-table-cell" style="text-align:left"><%:ids_time%></th>
+				<th width="30%" class="cbi-section-table-cell" style="text-align:left"><%:ids_duration%></th>
+				<th width="10%" class="cbi-section-table-cell" style="text-align:left"><input type="checkbox" name="ckbAllCallLog" /></th>
+			</tr>
+		</table>
+	</fieldset>
+	<div class="text-right">
+		<%:ids_page%>:&nbsp;<span id="listPage"></span>&nbsp;&nbsp; <span id="btnPrev"> <img src="/luci-static/bootstrap/images/page_previous.png">
+		</span> &nbsp;<span id="spanPageNum"></span>&nbsp; <span id="btnNext"> <img src="/luci-static/bootstrap/images/page_next.png">
+		</span>&nbsp;&nbsp; <span> <select id="pageNum" name="pageNum" class="span1"></select>
+		</span>
+	</div>
+</div>
+</div>
+<%+footer%>

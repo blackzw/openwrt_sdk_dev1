@@ -1,0 +1,238 @@
+<%#
+LuCI - Lua Configuration Interface
+Copyright 2008-2009 Steven Barth <steven@midlink.org>
+Copyright 2008-2011 Jo-Philipp Wich <xm@subsignal.org>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+$Id: iptables.htm 6827 2011-01-29 22:50:13Z jow $
+
+-%>
+
+
+<%+header%>
+
+<style type="text/css">
+	span:target {
+		color: blue;
+		text-decoration: underline;
+	}
+	.cbi-section .cbi-section-table .readImg {
+    background: url("/luci-static/bootstrap/images/smsStatus.png") no-repeat scroll center -32px rgba(0, 0, 0, 0);
+    display: block;
+    height: 26px;
+    width: 69px;
+}
+.sms_read_date_span{
+	 line-height: 2.5em;
+}
+.cbi-map-descr {
+    margin-top: 10px;
+	}
+
+</style>
+<h2><a id="content" name="content"><%:Services-SMS%><% if list == "read" then %><%:-Read%><% elseif list == "sent" then %><%:-Sent%><% elseif list == "draft" then %><%:-Draft%><% end %></a></h2>
+<ul class="tabs">
+	<li class="tabmenu-item-new"><a href="<%=REQUEST_URI%>/new">New</a></li>	
+	<li class="tabmenu-item-read<% if list == "read" then %> active<% end %>"><a href="<%=REQUEST_URI%>?list=read">Read</a></li>
+	<li class="tabmenu-item-sent<% if list == "sent" then %> active<% end %>"><a href="<%=REQUEST_URI%>?list=sent">Sent</a></li>
+	<li class="tabmenu-item-draft<% if list == "draft" then %> active<% end %>"><a href="<%=REQUEST_URI%>?list=draft">Draft</a></li>
+	<li class="tabmenu-item-sms_setting"><a href="<%=REQUEST_URI%>/sms_settings">SMS Settings</a></li>
+</ul>
+<% if list == "sent" then %>
+			<div class="cbi-map-descr">
+				SMS Storage Status(Extant SMS/Total):<span id="currentSmsCount">19</span>/<span id="totalSmsCount">50</span>		
+			</div>
+			<fieldset class="cbi-section">
+				<table class="cbi-section-table" style="width:100%">
+					<tr class="cbi-section-table-titles">				
+						<th class="cbi-section-table-cell" style="text-align:left">Number</th>
+						<th class="cbi-section-table-cell" style="text-align:left">Content</th>
+						<th class="cbi-section-table-cell" style="text-align:left"><input type="checkbox"/></th>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-1">
+						<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-2">
+						<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-1">
+						<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+				</table>
+				<div class="cbi-page-actions">
+				Page:&nbsp;<span id="listPage">1/2</span>&nbsp;&nbsp;
+						<span id="btnPrev">
+							<img src="/luci-static/bootstrap/images/page_previous.png">
+						</span>
+						&nbsp;<span id="spanPageNum">1</span>&nbsp;
+						<span id="btnNext">
+							<img src="/luci-static/bootstrap/images/page_next.png">
+						</span>&nbsp;&nbsp;
+						<span>
+							<select id="pageNum" name="pageNum" style="width:40px;">
+								<option value="1">1</option>
+								<option value="2">2</option>
+							</select>
+						</span>
+				</div>
+				<div class="cbi-page-actions">
+					<input class="cbi-button cbi-button-save" type="button" value="Refresh">
+					<input class="cbi-button cbi-button-reset" type="button" value="Delete">
+				</div>
+			</fieldset>
+<% elseif list == "draft" then %>
+		<div class="cbi-map-descr">
+			SMS Storage Status(Extant SMS/Total):<span id="currentSmsCount">19</span>/<span id="totalSmsCount">50</span>		
+		</div>
+		<fieldset class="cbi-section">
+				<table class="cbi-section-table" style="width:100%">
+					<tr class="cbi-section-table-titles">				
+						<th class="cbi-section-table-cell" style="text-align:left">Number</th>
+						<th class="cbi-section-table-cell" style="text-align:left">Content</th>
+						<th class="cbi-section-table-cell" style="text-align:left"><input type="checkbox"/></th>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-1">
+						<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-2">
+						<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-1">
+					<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+				</table>
+				<div class="cbi-page-actions">
+				Page:&nbsp;<span id="listPage">1/2</span>&nbsp;&nbsp;
+						<span id="btnPrev">
+							<img src="/luci-static/bootstrap/images/page_previous.png">
+						</span>
+						&nbsp;<span id="spanPageNum">1</span>&nbsp;
+						<span id="btnNext">
+							<img src="/luci-static/bootstrap/images/page_next.png">
+						</span>&nbsp;&nbsp;
+						<span>
+							<select id="pageNum" name="pageNum" style="width:40px;">
+								<option value="1">1</option>
+								<option value="2">2</option>
+							</select>
+						</span>
+				</div>
+				<div class="cbi-page-actions">
+					<input class="cbi-button cbi-button-save" type="button" value="Refresh">
+					<input class="cbi-button cbi-button-reset" type="button" value="Delete">
+				</div>
+			</fieldset>
+
+<% else %>
+		<div class="cbi-map-descr">
+			SMS Storage Status(Extant SMS/Total):<span id="currentSmsCount">19</span>/<span id="totalSmsCount">50</span>		
+		</div>
+		<fieldset class="cbi-section">
+				<table class="cbi-section-table" style="width:100%">
+					<tr class="cbi-section-table-titles">				
+						<th class="cbi-section-table-cell" style="text-align:center">State</th>
+						<th class="cbi-section-table-cell" style="text-align:left">Number</th>
+						<th class="cbi-section-table-cell" style="text-align:left">Date</th>
+						<th class="cbi-section-table-cell" style="text-align:left">Content</th>
+						<th class="cbi-section-table-cell" style="text-align:left"><input type="checkbox"/></th>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-1">
+						<td style="text-align:left; width:10%"><span class="readImg"></span></td>
+						<td style="text-align:left"><a class="" href="">+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">2009-02-22 19:53:32</a></td>
+						<td style="text-align:left"><a class="" href="">tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-2">
+						<td style="text-align:left; width:10%"><span class="readImg"></span></td>
+						<td style="text-align:left"><a class="" href="">	+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">	2009-02-22 19:53:32</a></td>
+						<td style="text-align:left"><a class="" href="">	tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+					<tr class="cbi-section-table-row  cbi-rowstyle-1">
+						<td style="text-align:left; width:10%"><span class="readImg"></span></td>
+						<td style="text-align:left"><a class="" href="">	+8613488118748</a></td>
+						<td style="text-align:left"><a class="" href="">	2009-02-22 19:53:32</a></td>
+						<td style="text-align:left"><a class="" href="">	tcl/jrd/cmd/sw/app team</a></td>
+						<td style="text-align:left"><input type="checkbox"/></td>
+					</tr>
+				</table>
+				<div class="cbi-page-actions">
+				Page:&nbsp;<span id="listPage">1/2</span>&nbsp;&nbsp;
+						<span id="btnPrev">
+							<img src="/luci-static/bootstrap/images/page_previous.png">
+						</span>
+						&nbsp;<span id="spanPageNum">1</span>&nbsp;
+						<span id="btnNext">
+							<img src="/luci-static/bootstrap/images/page_next.png">
+						</span>&nbsp;&nbsp;
+						<span>
+							<select id="pageNum" name="pageNum" style="width:40px;">
+								<option value="1">1</option>
+								<option value="2">2</option>
+							</select>
+						</span>
+				</div>
+				<div class="cbi-page-actions">
+					<input class="cbi-button cbi-button-save" type="button" value="Refresh">
+					<input class="cbi-button cbi-button-reset" type="button" value="Delete">
+				</div>
+			</fieldset>
+
+<%end%>
+<div class="read_sms_map" style="display:none">
+	<form method="post" action="<%=REQUEST_URI%>">
+		<div class="cbi-map">
+			<div class="cbi-map-descr read_sms_map">Read SMS</div>
+			<fieldset class="cbi-section">
+						<fieldset class="cbi-section-node">
+							<div class="cbi-value">
+								<label class="cbi-value-title">Mobile Number:</label>
+								<div class="cbi-value-field">
+									<input type="text" readOnly="true" name="url" size="30" value="18627661788" />
+								</div>
+							</div>
+							<div class="cbi-value">
+								<label class="cbi-value-title">Date:</label>
+								<div class="cbi-value-field">
+									<span class="sms_read_date_span">10-04-2013 20:24:56</span>
+								</div>
+							</div>
+							<div>
+								<label class="text">SMS:</label>
+							</div>
+							<div id="" class="cbi-value cbi-value-last">
+							<textarea id="" class="cbi-input-textarea" readOnly="true" rows="10" name="cbid.ipkgconf.1.lines" onchange="" style="width: 100%" data-info="sdfsdf__lines">您好?</textarea>
+							</div>
+							<div class="cbi-page-actions">
+								<input class="cbi-button cbi-button-save" type="submit" value="Back">
+								<input class="cbi-button cbi-button-reset" type="reset" value="Reply">
+								<input class="cbi-button cbi-button-save" type="submit" value="Forward">
+								<input class="cbi-button cbi-button-reset" type="reset" value="Delete">
+							</div>
+							</fieldset>
+					</fieldset>
+		</div>
+	</form>
+</div>
+
+
+<%+footer%>

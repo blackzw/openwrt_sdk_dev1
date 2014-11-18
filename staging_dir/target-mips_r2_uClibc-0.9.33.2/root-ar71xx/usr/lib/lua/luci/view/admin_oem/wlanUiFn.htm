@@ -1,0 +1,240 @@
+﻿//base on wlan.js
+var wlanUiFn = {
+	getFrequency:function(wlanFrequency){
+		var wlanFrequencyStr = "2.4GHz";
+		switch(parseInt(wlanFrequency)){
+			case G_SDK_WLAN_MODE_FREQUENCY_2G:
+				wlanFrequencyStr = "<%:2.4GHz%>";
+			break;
+			case G_SDK_WLAN_MODE_FREQUENCY_5G:
+				wlanFrequencyStr = "<%:5GHz%>";
+			break;
+		}
+		return wlanFrequencyStr;
+	},
+	getEncryption:function(encryption){
+		var encryptionStr;
+		switch(parseInt(encryption)){
+			case G_SDK_WLAN_SECURITY_MODE_DISABLE:
+				encryptionStr = "<%:ids_wlan_securityDisabled%>";
+				break;
+			case G_SDK_WLAN_SECURITY_MODE_WEP:
+				encryptionStr = "<%:WEP%>";
+				break;
+			case G_SDK_WLAN_SECURITY_MODE_WPA:
+				encryptionStr = "<%:WPA PSK%>";
+				break;
+			case G_SDK_WLAN_SECURITY_MODE_WPA2:
+				encryptionStr = "<%:WPA2 PSK%>";
+				break;
+			case G_SDK_WLAN_SECURITY_MODE_WPA_WPA2:
+				encryptionStr = "<%:WPA/WPA2 PSK%>";
+				break;
+			default:
+				encryptionStr = "<%:ids_unknown%>";
+
+		}
+		return encryptionStr;
+	},
+
+	getBroadcast:function(boradcast){
+		var broadcastModeStr = "";
+		if(parseInt(boradcast) == G_SDK_WLAN_SSID_BROADCAST_ENABLE){
+			broadcastModeStr = "<%:ids_enable%>";
+		}else{
+			broadcastModeStr = "<%:ids_disable%>";
+		}
+		return broadcastModeStr;
+	},
+
+	getSSID:function(ssid){
+		var ssidStr = "";
+		if (!!ssid){
+			ssidStr = ssid.replace(/\s/g,"&nbsp;");
+		}
+		return ssidStr
+	},
+	get2GChannelHtmlSelectStr:function(channelList,bandwidth){
+		var htmlStr='<option value="'+G_SDK_WLAN_CHANNEL_AUTO_2G+'" selected="selected"><%:Auto%></option>';
+		var is40Bandwidth = (bandwidth == G_SDK_WLAN_BANDWIDTH_40)?true:false;
+		if($.isArray(channelList)){
+			if(is40Bandwidth){
+				channelList = $.grep(channelList, function(n,i){
+			    	return (n.restricted == false) && n.channel < 15;
+			    });
+			}else{
+				channelList = $.grep(channelList, function(n,i){
+			    	return (n.restricted == false) && n.channel < 15;
+			    });
+			}
+			
+			
+			$.each(channelList,function(i,v){
+				htmlStr+='<option value="'+v.channel+'">'+v.channel+'</option>'
+			})
+		}
+		return htmlStr;
+	},
+	get5GChannelHtmlSelectStr:function(channelList,bandwidth){
+		var htmlStr='<option value="'+G_SDK_WLAN_CHANNEL_AUTO_5G+'" selected="selected"><%:ids_auto%></option>';
+		var is40Bandwidth = (bandwidth == G_SDK_WLAN_BANDWIDTH_40)?true:false;
+		if($.isArray(channelList)){
+			if(is40Bandwidth){
+				channelList = $.grep(channelList, function(n,i){
+			     	return (n.restricted == false) && n.channel > 14;
+			    });
+			}else{
+				channelList = $.grep(channelList, function(n,i){
+			     	return (n.restricted == false) && n.channel > 14;
+			    });
+			}
+			
+			$.each(channelList,function(i,v){
+				htmlStr+='<option value="'+v.channel+'">'+v.channel+'</option>'
+			})
+		}
+		return htmlStr;
+	},
+
+	check802Mode:function(wlanFrequency,mode){
+		var setMode = mode;
+		if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+			if(mode == G_SDK_WLAN_802MODE_A || mode == G_SDK_WLAN_802MODE_AN){
+				setMode = mode;
+			}else{
+				setMode = G_SDK_WLAN_802MODE_AN;
+			}
+		}else if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_2G){
+			if(mode == G_SDK_WLAN_802MODE_B || mode == G_SDK_WLAN_802MODE_GN || mode == G_SDK_WLAN_802MODE_G){
+				setMode = mode;
+			}else{
+				setMode = G_SDK_WLAN_802MODE_GN;
+			}
+		}else{
+			setMode = mode;
+		}
+
+		return setMode;
+	}
+}
+
+
+function uiShowWlanSecurityInfo(securityMode){
+	clearErrorTip();
+	var securityModeVal = parseInt(securityMode);
+	$("#sel-waln-security").val(securityModeVal);
+	switch(securityModeVal){
+		case G_SDK_WLAN_SECURITY_MODE_DISABLE:
+			showDisableInfo();
+			break;
+		case G_SDK_WLAN_SECURITY_MODE_WEP:
+			showWepInfo();
+			break;
+		case G_SDK_WLAN_SECURITY_MODE_WPA:
+		case G_SDK_WLAN_SECURITY_MODE_WPA2:
+		case G_SDK_WLAN_SECURITY_MODE_WPA_WPA2:
+			showWpaInfo();
+			break;
+		default:
+			showDisableInfo();
+	}
+
+
+		function showDisableInfo(){
+			$(".encryption-box").hide();
+			$("#show-password-box").hide();
+		}
+
+		function showWepInfo(){
+			$(".encryption-box").hide();
+			$("#wep-box").show();
+			$("#show-password-box").show();
+			$("#sel-wep-type").val(P_wlanSettings.WepType);
+			$("#ipt-wep-key").val(P_wlanSettings.WepKey);
+		}
+
+		function showWpaInfo(){
+			$(".encryption-box").hide();
+			$("#wpa-box").show();
+			$("#show-password-box").show();
+			$("#sel-wpa-type").val(P_wlanSettings.WpaType);
+			$("#ipt-wpa-key").val(P_wlanSettings.WpaKey);
+		}
+}
+
+function uiDisplayWLanEncryptionKey(flag){
+	var iptWepKeyId = "ipt-wep-key";
+	var iptWpaKeyId = "ipt-wpa-key";
+	$("#check-showPw").attr("checked",flag);
+
+	var $iptWepKey = $("#"+iptWepKeyId);
+	var $iptWpaKey = $("#"+iptWpaKeyId);
+	var displayType = (flag==true || flag =="checked")?"text":"password";
+	showPW(displayType);
+
+	function showPW(displayType){
+		$iptWepKey.replaceWith("<input type='"+displayType+"' class='iptText' id='"+iptWepKeyId+"' maxlength='26' value='" + $iptWepKey.val() + "'/>");
+		$iptWpaKey.replaceWith("<input type='"+displayType+"' class='iptText' id='"+iptWpaKeyId+"' maxlength='63' value='" + $iptWpaKey.val() + "'/>");
+	}
+}
+
+function clearErrorTip(){
+	$(".rule").remove();
+	$(".iptText").removeClass("errorIpt");
+}
+	     
+function getWpaEncryptionHtmlStr(wMode){
+	var htmlStr="";
+	var wModeVal = parseInt(wMode);
+	if(wModeVal == G_SDK_WLAN_802MODE_AN || wModeVal == G_SDK_WLAN_802MODE_GN){
+		htmlStr = '<option value="1" selected="selected">AES</option>';
+	}else{
+		htmlStr = '<option value="0" selected="selected">TKIP</option><option value="1" selected="selected">AES</option><option value="2"><%:ids_auto%></option>';
+	}
+
+	return htmlStr;
+}
+
+function uiGetCountryList(){
+    var CountryList = countryChannelList;
+    var str = "";
+    $.each(CountryList,function(i,v){
+        str +='<option value="'+i+'">'+v[0]+'</option>';
+    })
+    return str;
+}
+
+function isSupport5Ghz40MCountry(currentCountry){
+	var bandwidth40mChannel = countryChannelList[currentCountry][3];
+    if($.isArray(bandwidth40mChannel)&&bandwidth40mChannel.length ==0){
+        return false;
+    }else{
+        return true;
+    }
+}
+
+function check802ModeSecurity(wMode,securityMode){
+	if((wMode == G_SDK_WLAN_802MODE_AN || wMode == G_SDK_WLAN_802MODE_GN) && securityMode == G_SDK_WLAN_SECURITY_MODE_WEP){
+		return false;
+	}else{
+		return true;
+	}
+}
+
+function uiGet5GChannelHtmlSelectStr(countryCode){
+	var htmlStr='<option value="'+G_SDK_WLAN_CHANNEL_AUTO_5G+'" selected="selected"><%:ids_auto%></option>';
+	var channelList;
+	$.each(countryChannelList[countryCode][2],function(i,v){
+		htmlStr+='<option value="'+v+'">'+v+'</option>'
+	})
+	return htmlStr;
+}
+
+function uiGet2GChannelHtmlSelectStr(countryCode){
+	var htmlStr='<option value="'+G_SDK_WLAN_CHANNEL_AUTO_2G+'" selected="selected"><%:Auto%></option>';
+	var channel2G = countryChannelList[countryCode][1];
+	for(var i =1; i <= channel2G; i++){
+		htmlStr+='<option value="'+i+'">'+i+'</option>'
+	}
+	return htmlStr;
+}

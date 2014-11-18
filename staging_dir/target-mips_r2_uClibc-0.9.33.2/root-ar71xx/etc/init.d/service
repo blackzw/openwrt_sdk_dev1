@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2012 OpenWrt.org
+
+START=70
+
+start() 
+{	
+	service_start /bin/service
+}
+
+stop() 
+{
+	service_stop /bin/service
+}
+
+
+[ ! -d /mnt/airdisk ] && {
+        mkdir /mnt/airdisk
+        chmod 0777 -R /mnt/airdisk
+}

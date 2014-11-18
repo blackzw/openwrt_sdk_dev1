@@ -1,0 +1,179 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+
+	<%+admin_oem/simCommonFn%>
+	/* 	global variable */
+	SMS_Store_SIM_Card = 0;
+	SMS_Store_ME = 1;
+	SMS_Store_SIM_And_ME = 2;
+
+	SMS_Report_Disable = 0;
+	SMS_Report_Enable = 1;
+	var baseHref_all = "<%=REQUEST_URI%>";
+
+	var center_number, sms_mode, sms_report_status;
+	function initGlobleParam()
+	{
+		 center_number =""; 
+		 sms_mode = 0; 
+		 sms_report_status = 0;
+	}
+
+	function uiPageInit()
+	{
+		initGlobleParam();
+		simInfo = SDK.SIM.GetSimStatus();
+		var simState;
+		if (!simInfo.hasOwnProperty("error"))
+		{
+			simState = simInfo.SIMState;
+		}
+		var $textShowBox = $("#text_show_box");
+		$("#sms_settings_page_map").hide();
+		$textShowBox.hide();
+		if(simState == G_SDK_SIM_STATE_READY){
+			uiShowSMSSettingsPage();
+		}else{
+			$textShowBox.show().html(simUiFn.getSimStatus(simState));
+		}
+	}
+
+	function uiShowSMSSettingsPage()
+	{
+		formload();
+		$("#sms_settings_page_map").show();
+		initSmsSetting();
+	}
+
+	function formload()
+	{
+		data = SDK.SMS.GetSmsSettings();
+		var result;
+		if (data != null && !data.hasOwnProperty("error"))
+		{
+			result = data.result;
+			center_number = result.SmsCenter;
+			sms_report_status = result.SmsReportSwitch;
+			sms_mode = result.StoreFlag;
+		}
+	}
+	function initSmsSetting()
+	{
+		if ((center_number == "null") || (center_number == ""))
+		{
+			$("#center_num").val("");
+		} else
+		{
+			$("#center_num").val(center_number);
+		}
+		$("#span_center_num").html(center_number);
+		$("#sms_save_mode").val(sms_mode);
+		showSMSReportStatus(sms_report_status);
+
+		$("#set_btnCancel").click(function()
+		{
+			location.href = baseHref_all;
+		});
+		$("#set_btnApply").click(applyEvent);
+		$("#set_btnCancel,#set_btnApply").setBtnDisabled();
+		$("#center_num,#sms_save_mode,input[name='sms_report']").bind("input change keyup keydown paste", function()
+		{
+			$("#set_btnCancel,#set_btnApply").removeBtnDisabled();
+		});
+	}
+
+	function applyEvent()
+	{
+		var $centerNum = $("#center_num");
+		var centerNumber = $.trim($centerNum.val());
+		if (centerNumber == "")
+		{
+			$centerNum.showRule("<%:ids_sms_settingCenterNumberEmptyPrompt%>");
+			return;
+		}
+		if (!isSmsNumber(centerNumber))
+		{
+			$centerNum.showRule("<%:ids_sms_settingCenterNumberInvalidPrompt%>");
+			return;
+		}
+		$("#set_btnCancel,#set_btnApply").setBtnDisabled();
+		var params = {
+			"SmsReportSwitch" : $("input[name='sms_report']:checked").val(),
+			"StoreFlag" : $("#sms_save_mode").val(),
+			"SmsCenter": $.trim($("#center_num").val())
+		};
+
+		var result = SDK.SMS.SetSmsSettings(params.SmsReportSwitch,params.StoreFlag,params.SmsCenter).error;
+			if (result == API_RESULT_SUCCESS)
+			{
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					location.href = baseHref_all;
+				});
+			} else
+			{
+				sys.alert("<%:ids_failed%>", function()
+				{
+					$("#btnCancel,#btnApply").removeBtnDisabled();
+				});
+			}
+
+	}
+
+	/* --Util-- */
+	function showSMSReportStatus(sms_report)
+	{
+		$("input[name='sms_report'][value='" + sms_report + "']").attr("checked", true);
+	}
+
+	function isSmsNumber(str)
+	{
+		return /^[+]?[0-9]+$/.test(str);
+	}
+</script>
+<div class="main-box border-notop form-horizontal">
+	<!-- simcard status -->
+	<div id="text_show_box" style="display: none"></div>
+	<!-- SMS Settings -->
+	<div id="sms_settings_page_map" style="display:none">
+		<!-- <p class="pd20"><%:ids_sms_settingDes%></p> -->
+		<div class="control-group pt100">
+			<label class="control-label"><%:ids_sms_settingSmsc%>:</label>
+			<div class="controls">
+				
+				<input type="hidden" name="" id="center_num" size="30" value="" />
+				<span id="span_center_num"></span>
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label"><%:ids_sms_settingSmsReport%>:</label>
+			<div class="controls">
+				<label class="radio inline">
+			  <input type="radio" name="sms_report" id="name" value="1" checked><%:ids_enable%>
+			</label>
+			<label class="radio inline">
+			  <input type="radio" name="sms_report" id="name" value="0" checked><%:ids_disable%>
+			</label>
+			</div>
+		</div>
+		<div id="" class="control-group" style="display: none">
+			<label class="control-label" for=""><%:ids_sms_saveMode%> </label>
+			<div class="controls">
+				<select id="sms_save_mode" name="">
+					<option id="" value="0"><%:ids_sms_modeSimCard%></option>
+					<option id="" value="1"><%:ids_device%></option>
+					<option id="" value="2"><%:ids_sms_modeSimcardDevice%></option>
+				</select>
+			</div>
+		</div>
+		<div class="text-center">
+			<button class="btn btn-primary" id="set_btnApply"><%:ids_apply%></button>
+			<button class="btn btn-primary" id="set_btnCancel"><%:ids_cancel%></button>
+		</div>	
+	</div>
+</div>
+<%+footer%>

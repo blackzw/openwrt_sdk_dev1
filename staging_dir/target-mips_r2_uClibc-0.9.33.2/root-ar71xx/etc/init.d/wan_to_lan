@@ -1,0 +1,19 @@
+#!/bin/sh
+	
+	
+	uci del network.eth	
+	uci del network.@switch_vlan[1]
+	
+	
+	uci set network.@switch_vlan[0].vlan='1'
+	uci set network.@switch_vlan[0].ports='0t 1 2 3 4 5'
+	uci set network.@switch_vlan[0].vid='1'
+	
+	uci set	firewall.@zone[1].network='wan'
+	
+	uci commit network	
+	uci commit firewall	
+
+	/etc/init.d/network restart
+	/etc/init.d/firewall restart
+	

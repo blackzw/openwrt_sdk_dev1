@@ -1,0 +1,594 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+	$("input[type='password']").val("");
+})
+
+<%+admin_oem/simCommonFn%>
+
+function uiPageInit(){
+	$(".common-box").hide();
+	var simInfo = SDK.SIM.GetSimStatus();
+	var simState = simInfo.SIMState;
+	var pinState = simInfo.PinState == G_SDK_PIN_STATE_DISABLE?G_SDK_PIN_SET_STATE_DISABLE:G_SDK_PIN_SET_STATE_ENABLE;
+	var pinTimes = simInfo.PinRemainingTimes;
+	var pukTimes = simInfo.PukRemainingTimes;
+	switch(simState){
+		case G_SDK_SIM_STATE_PIN:
+			uiShowUnlockPinBox(pinTimes);
+			break;
+		case G_SDK_SIM_STATE_PUK:
+			uiShowUnlockPukBox(pukTimes);
+			break;
+		case G_SDK_SIM_STATE_SIMLOCK:
+			uiShowSimlockBox(simInfo.SimLockState,simInfo.SimlockTimes);
+			break;
+		case G_SDK_SIM_STATE_READY:
+				uiShowSimReadyBox(pinState,pinTimes);
+			break;
+		default:
+			uiShowSimStatus(simUiFn.getSimStatus(simState));
+	
+	}
+}
+
+function uiShowSimStatus(statusStr){
+	$simStatusBox = $("#sim_status_box");
+	$simStatusBox.html(statusStr).show();
+}
+
+function uiShowUnlockPinBox(pinTimes){
+	$("#sim_pin_box").show();
+	uiShowPinRemainingTimes(pinTimes);
+}
+
+function uiShowUnlockPukBox(pukTimes){
+	$("#sim_puk_box").show();
+	uiShowPukRemainingTimes(pukTimes);
+}
+
+function uiShowSimlockBox(simlockStatus,simlockTimes){
+	var simlockState = simUiFn.getSimLockState(simlockStatus);
+	var simlockStateString = simUiFn.getSimlockStateString(simlockState);
+	
+	if(simlockState == G_SDK_SIMLOCK_NO || simlockState == G_SDK_SIMLOCK_RCK_FORBID){
+		uiShowSimStatus(simlockStateString);
+	}else{
+		$("#simlock_box").show();
+		$("#simlock-type").html(simlockStateString).attr("data-type",simlockState);
+		$("#label_simlockTimes").html(simlockTimes);
+		$("#unlockSimlockApply,#unlockSimlockCancel").setBtnDisabled();
+		$("#simlock-code").bind("input change keyup keydown paste",function(){
+			$("#unlockSimlockApply,#unlockSimlockCancel").removeBtnDisabled();
+		});
+	}
+}
+
+function uiSimlockBoxCancel(){
+	uiPageInit();
+	$('#simlock-code').val('');
+}
+
+function uiShowSimReadyBox(pinState,pinTimes){
+	$("#sim_ready_box").show();
+	$(".common-box-child").hide();
+	var $pinStatusBox = $("#pin_status_box");
+	$("#sim_ready_btn_box button").hide();
+	if(pinState == G_SDK_PIN_SET_STATE_DISABLE){
+		$pinStatusBox.html("<%:ids_sim_pinDisable%>");
+		$("#btn_show_enable_pin_box").show().click(function(){
+			uiShowChangePinStateBox(pinState);
+		});
+	}else{
+		$pinStatusBox.html("<%:ids_sim_pinEnable%>");
+		$("#btn_show_disable_pin_box").show().click(function(){
+			uiShowChangePinStateBox(pinState);
+		})
+		$("#btn_show_change_pin_box").show().click(function(){
+			uiShowChangePinBox();
+		});
+	}
+	uiShowPinRemainingTimes(pinTimes);
+	if(SDK.WanConnection.GetConnectionState().ConnectionStatus != G_SDK_NETWORK_CONNCTION_DISCONNECTED){
+		$("#sim_ready_btn_box button").setBtnDisabled(); 
+	}else{
+		$("#sim_ready_btn_box button").removeBtnDisabled(); 
+	}
+}
+
+function uiShowPinRemainingTimes(pinTimes){
+	$(".label_PinTimes").html(pinTimes);
+}
+
+function uiShowPukRemainingTimes(pukTimes){
+	$(".label_PukTimes").html(pukTimes);
+}
+
+function uiShowChangePinBox(){
+    $("#change_pin_box").show();
+    $("#change_pin_state_box").hide();
+}
+
+function uiHideChangePinBox(){
+	$("#change_pin_box").hide();
+}
+function uiShowChangePinStateBox(pinState){
+	$changePinStateBox = $("#change_pin_state_box");
+	$changePinStateBox.show();
+	$changePinStateBox.find("input[type='text']").val("");
+    $("#change_pin_box").hide();
+    $currentBox = $("#current_box");
+    var $pinState = $("input[name='pinStateHidden']");
+    if(pinState ==G_SDK_PIN_AUTO_ENTER_STATE_DISABLE){
+    	$currentBox.html("<%:ids_sim_enablePin%>:");
+    	$pinState.val(G_SDK_PIN_AUTO_ENTER_STATE_ENABLE);
+    }else{
+    	$currentBox.html("<%:ids_sim_diablePin%>:");
+    	$pinState.val(G_SDK_PIN_AUTO_ENTER_STATE_DISABLE);//alert(state)
+    }
+}
+
+function uiHideChangePinStateBox(){
+	$("#change_pin_state_box").hide();
+}
+
+//unlock PIN
+function uiUnlockPin(){
+    var $pin = $("#ipt-pinCode");
+    var pinCode = $pin.val();
+    var result = SDK.SIM.UnlockPin(pinCode);
+    switch(result.error){
+        case 0:
+        	sys.prompt("<%:ids_waiting%>",4000);
+        	setTimeout(function(){
+        		sys.alert("<%:ids_succeeded%>",function(){
+	                uiPageInit();
+	            });
+        	},4000)
+            break;
+        case 1:
+        	sys.alert("<%:ids_sim_pinRule%>",function(){
+                $pin.focus();
+            });          
+            break;
+        default:
+        	sys.alert("<%:ids_sim_verifyPinFailMsg%>",function(){
+        		$pin.val("");
+        		uiPageInit();
+        	})	
+    }
+}
+
+//unlock PIN and Set auto PIN
+function uiSetAutoEnterPinState(form){
+    var $pin = $(form.Pin);
+    var pinCode = $pin.val();
+    var state = form.autoPinState.checked?G_SDK_PIN_AUTO_ENTER_STATE_ENABLE:G_SDK_PIN_AUTO_ENTER_STATE_DISABLE;
+    var resultUnlockPin = SDK.SIM.UnlockPin(pinCode);
+    switch(resultUnlockPin.error){
+        case 0:
+        	sys.prompt("<%:ids_waiting%>",4000);
+        	setTimeout(function(){
+        		var result = SDK.SIM.SetAutoEnterPinState(state,pinCode);
+	        	switch(result.error){
+			        case 0:
+			            sys.alert("<%:ids_succeeded%>",function(){
+			            	uiPageInit();
+			        	})	
+			            break;
+			        default:
+			        	sys.alert("<%:ids_sim_verifyPinFailMsg%>",function(){
+			        		uiPageInit();
+			        	})	
+			    }
+		        
+		    },4000);
+        	
+            break;
+        case 1:
+        	sys.alert("<%:ids_sim_pinRule%>",function(){
+                $pin.focus();
+            });          
+            break;
+        default:
+        	sys.alert("<%:ids_sim_verifyPinFailMsg%>",function(){
+        		$pin.val("").focus();
+        		uiPageInit();
+        	})	
+    }
+}
+
+function uiSetAutoEnterPinState(){
+	var $pin = $("#ipt-pinCode");
+    var pinCode = $pin.val();
+    var state = $("#ipt-autoPinState").attr("checked") == "checked"?G_SDK_PIN_AUTO_ENTER_STATE_ENABLE:G_SDK_PIN_AUTO_ENTER_STATE_DISABLE;
+    var resultUnlockPin = SDK.SIM.UnlockPin(pinCode);
+    switch(resultUnlockPin.error){
+        case 0:
+        	sys.prompt("<%:ids_waiting%>",4000);
+        	setTimeout(function(){
+        		var result = SDK.SIM.SetAutoEnterPinState(state,pinCode);
+	        	switch(result.error){
+			        case 0:
+			            sys.alert("<%:ids_succeeded%>",function(){
+			            	uiPageInit();
+			        	})	
+			            break;
+			        default:
+			        	sys.alert("<%:ids_sim_verifyPinFailMsg%>",function(){
+			        		uiPageInit();
+			        	})	
+			    }
+		        
+		    },4000);
+        	
+            break;
+        case 1:
+        	sys.alert("<%:ids_sim_pinRule%>",function(){
+                $pin.focus();
+            });          
+            break;
+        default:
+        	sys.alert("<%:ids_sim_verifyPinFailMsg%>",function(){
+        		$pin.val("").focus();
+        		uiPageInit();
+        	})	
+    }
+}
+
+//unlock PUK
+function uiUnlockPuk(form){
+    var $Puk = $(form.Puk);
+	var $newPin = $(form.newPin);
+	var $confirmPin = $(form.confirmPin);
+	var Puk = $Puk.val();
+    var newPin = $newPin.val();
+    var confirmPin = $confirmPin.val();
+
+    var result = SDK.SIM.UnlockPuk(Puk,newPin,confirmPin);
+    switch(result.error){
+        case 0:
+        	sys.prompt("<%:ids_waiting%>",3000);
+        	setTimeout(function(){
+        		sys.alert("<%:ids_succeeded%>",function(){
+	        		$Puk.val("").focus();
+	        		$newPin.val("");
+	        		$confirmPin.val("");
+	        		uiPageInit();
+            	});
+        	},3000);
+            break;
+        case 1:
+            sys.alert("<%:ids_sim_pukRule%>",function(){
+            	$Puk.focus();
+            });
+            break;
+        case 2:
+            sys.alert("<%:ids_sim_newPinRule%>",function(){
+            	$newPin.focus();
+            });
+            
+            break;
+        case 3:
+            sys.alert("<%:ids_sim_confirmedPin%>",function(){
+            	$confirmPin.focus();
+            });
+            break; 
+        default:
+        	sys.alert("<%:ids_sim_verifyPukFailMsg%>",function(){
+        		$Puk.val("").focus();
+        		$newPin.val("");
+        		$confirmPin.val("");
+            	uiPageInit();
+            });
+    }	
+}
+
+//chang PIN
+function uiChangePin(form){
+	var $currentPin = $(form.currentPin);
+	var $newPin = $(form.newPin);
+	var $confirmPin = $(form.confirmPin);
+	var currentPin = $currentPin.val();
+    var newPin = $newPin.val();
+    var confirmPin = $confirmPin.val();
+
+    var result = SDK.SIM.ChangePin(currentPin,newPin,confirmPin);
+    switch(result.error){
+        case 0:
+            sys.alert("<%:ids_succeeded%>",function(){
+            	$currentPin.val("").focus();
+        		$newPin.val("");
+        		$confirmPin.val("");
+            	uiPageInit();
+            });
+            break;
+        case 1:
+            sys.alert("<%:ids_sim_pinRule%>",function(){
+            	$currentPin.focus();
+            });
+            break;
+        case 2:
+        	sys.alert("<%:ids_sim_pinRule%>",function(){
+            	$newPin.focus();
+            });  
+            break;
+        case 3:
+        	sys.alert("<%:ids_sim_confirmedPin%>",function(){
+            	$confirmPin.focus();
+            });  
+            break; 
+        default:
+        	sys.alert("<%:ids_sim_changePinFailMsg%>",function(){
+        		$currentPin.val("").focus();
+        		$newPin.val("");
+        		$confirmPin.val("");
+            	uiPageInit();
+            });          
+    }	
+}
+
+//chang pin State
+function uiChangePinState(form){
+	var $pin = $(form.pin);
+	var pin = $pin.val();
+    var state = $("input[name='pinStateHidden']").val();
+
+    var result = SDK.SIM.ChangePinState(state,pin);
+    switch(result.error){
+        case 0:
+            sys.alert("<%:ids_succeeded%>",function(){
+            	$pin.val("").focus();
+            	uiPageInit();
+            });
+            break;
+        case 1:
+        	sys.alert("<%:ids_sim_pinRule%>",function(){
+            	$pin.focus();
+            });
+            break;
+        case 2: 
+        	sys.alert("<%:ids_sim_pinStateError%>",function(){
+            	$pin.focus();
+            });
+            break;
+        default:
+        	sys.alert("<%:ids_sim_verifyPinFailMsg%>",function(){
+        		$pin.val("").focus();
+            	uiPageInit();
+            });
+    }
+}
+
+//unlock simlock
+function uiUnlockSimlock(){
+	var $simlockCode = $("#simlock-code");
+	var simlockType = $("#simlock-type").attr("data-type");
+	var simlockCode = $simlockCode.val();
+	if(simlockCode == ""){
+		sys.alert("<%:ids_sim_inputSimlock%>",function(){
+            uiPageInit();
+            $simlockCode.val("").focus();
+        });
+	}else if(simlockCode.length != 10 || /^[0-9]*$/.test(simlockCode)==false){
+		sys.alert("<%:ids_sim_simlockRule%>",function(){
+            uiPageInit();
+            $simlockCode.val("").focus();
+        });
+	}else{
+		var result = SDK.SIM.UnlockSimlock(simlockType,simlockCode);
+		switch(result.error){
+        case 0:
+    		sys.alert("<%:ids_succeeded%>",function(){
+                uiPageInit();
+                $simlockCode.val("").focus();
+            });
+            break;
+        default:
+        	sys.alert("<%:ids_failed%>",function(){
+        		uiPageInit();
+        		$simlockCode.val("").focus();
+        	})	
+    	}
+    
+	}
+}
+</script>
+<style>
+	.common-box{
+		display:none;
+	}
+	.hide{display:none;}
+	#sim_status_box{
+		width:600px;
+		margin:40px auto;
+		text-align:center;
+	}
+	.cbi-button-box{text-align:center}
+	#sim_ready_btn_box button{display: none; margin-right: 5px;}
+	#pin_status_box{text-align: center;padding:0 10px 20px;}
+</style>
+<div id="main_box" class="main-box border-notop">
+	<div id="sim_status_box" ></div>
+	<!-- Unlock PIN Start-->
+	<div class="common-box form-horizontal" id="sim_pin_box" >
+		<form method="post" onsubmit="return false;">
+			<div class="cbi-map">
+				<fieldset class="cbi-section-node">
+				    <div class="control-group">
+				    	<label class="control-label"><b><%:ids_sim_requirePin%>:</b></label>
+				    </div>
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_pinCode%>:</label>
+				        <div class="controls">
+				            <input type="password" class="cbi-input-text" name="Pin" id="ipt-pinCode" maxlength="8"/>
+				        </div>
+				    </div>
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_remaining%>:</label>
+				        <div class="controls"><span class="label_PinTimes"></span></div>
+				    </div>
+				</fieldset>
+			</div>
+			<div class="text-center">
+			    <button type="button" onclick="uiUnlockPin()" class="btn btn-primary"><%:ids_apply%></button>
+			    <button type="reset" class="btn btn-primary"><%:ids_cancel%></button>
+			</div>	
+		</form>
+	</div>
+	<!-- Unlock PIN End-->
+
+	<!-- Unlock PUK Start-->
+	<div class="common-box form-horizontal" id="sim_puk_box" >
+		<form method="post" onsubmit="uiUnlockPuk(this);return false;">
+			<div class="cbi-map">
+				<fieldset class="cbi-section-node">
+				    <div class="control-group">
+				    	<label class="control-label"><b><%:ids_sim_requirePuk%>:</b></label>
+				    </div>
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_pukCode%>:</label>
+				        <div class="controls">
+				            <input type="password" class="cbi-input-text" name="Puk" maxlength="8"/>
+				        </div>
+				    </div>
+				    
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_newPinCode%>:</label>
+				        <div class="controls">
+				            <input type="password" class="cbi-input-text" name="newPin" maxlength="8"/>
+				        </div>
+				    </div>
+				    
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_confirmedPinCode%>:</label>
+				        <div class="controls">
+				            <input type="password" class="cbi-input-text" name="confirmPin" maxlength="8"/>
+				        </div>
+				    </div>
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_remaining%>:</label>
+				        <div class="controls"><span class="label_PukTimes"></span></div>
+				    </div>
+				</fieldset>
+			</div>
+			<div class="text-center">
+			    <button type="submit" class="btn btn-primary"><%:ids_apply%></button>
+			    <button type="reset" class="btn btn-primary"><%:ids_cancel%></button>
+			</div>	
+		</form>
+	</div>
+	<!-- Unlock PUK End-->
+
+	<!-- SIMlock Start -->
+	<div class="common-box form-horizontal" id="simlock_box" >
+		<div class="form">
+			<div class="cbi-map">
+				<fieldset class="cbi-section-node">
+				    <div class="control-group">
+				    	<label class="control-label"><b><%:ids_sim_simlockType%>:</b></label>
+				        <div class="controls"><span id="simlock-type"></span></div>
+				    </div>
+				    
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_simlockCode%>:</label>
+				        <div class="controls">
+				            <input type="password" class="cbi-input-text" id="simlock-code" maxlength="10"/>
+				        </div>
+				    </div>
+				    <div class="control-group">
+				        <label class="control-label"><%:ids_sim_remaining%>:</label>
+				        <div class="controls"><span id="label_simlockTimes"></span></div>
+				    </div>
+				</fieldset>
+			</div>
+			<div class="text-center">
+			    <button type="submit" id="unlockSimlockApply" class="btn btn-primary" onclick="uiUnlockSimlock()"><%:ids_apply%></button>
+			    <button type="reset" id="unlockSimlockCancel" class="btn btn-primary" onclick="uiSimlockBoxCancel()"><%:ids_cancel%></button>
+			</div>	
+		</div>
+	</div>
+
+	<!-- SIMlock End -->
+
+	<!-- SIM Ready Start-->
+	<div class="common-box form-horizontal" id="sim_ready_box" >
+		<fieldset class="cbi-section">
+	    	<div id="pin_status_box"><%:ids_sim_pinDisable%></div>
+	    	<div class="text-center mb20" id="sim_ready_btn_box">
+			    <button type="button" class="btn btn-primary" id="btn_show_enable_pin_box"><%:ids_sim_enablePin%></button>
+			    <button type="button" class="btn btn-primary" id="btn_show_disable_pin_box"><%:ids_sim_diablePin%></button>
+			    <button type="button" class="btn btn-primary" id="btn_show_change_pin_box"><%:ids_sim_changePin%></button>
+			</div>	
+	    	<div class="common-box-child hide" id="change_pin_box">
+	    		<form method="post" onsubmit="uiChangePin(this);return false;">
+					<div class="cbi-map">
+						<fieldset class="cbi-section-node">
+						    <div class="control-group">
+						    	<label class="control-label"><b><%:ids_sim_changePin%>:</b></label>
+						    </div>
+						    <div class="control-group">
+						        <label class="control-label"><%:ids_sim_oldPinCode%>:</label>
+						        <div class="controls">
+						            <input type="password" class="cbi-input-text" name="currentPin" maxlength="8"/>
+						        </div>
+						    </div>
+						    
+						    <div class="control-group">
+						        <label class="control-label"><%:ids_sim_newPinCode%>:</label>
+						        <div class="controls">
+						            <input type="password" class="cbi-input-text" name="newPin" maxlength="8"/>
+						        </div>
+						    </div>
+						    
+						    <div class="control-group">
+						        <label class="control-label"><%:ids_sim_confirmedPinCode%>:</label>
+						        <div class="controls">
+						            <input type="password" class="cbi-input-text" name="confirmPin" maxlength="8"/>
+						        </div>
+						    </div>
+						    <div class="control-group">
+						        <label class="control-label"><%:ids_sim_remaining%>:</label>
+						        <div class="controls"><span class="label_PinTimes"></span></div>
+						    </div>
+						</fieldset>
+					</div>
+					<div class="text-center">
+					    <button type="submit" class="btn btn-primary"><%:ids_apply%></button>
+					    <button type="reset" class="btn btn-primary" onclick="uiHideChangePinBox()"><%:ids_cancel%></button>
+					</div>	
+				</form>
+	    	</div>
+
+	    	<div class="common-box-child hide" id="change_pin_state_box">
+	    		<form method="post" onsubmit="uiChangePinState(this);return false;">
+					<div class="cbi-map">
+						<fieldset class="cbi-section-node">
+						    <div class="control-group"><label class="control-label"><b id="current_box"></b></label></div>
+						    <input type="hidden" name="pinStateHidden"/>
+						    <div class="control-group">
+						        <label class="control-label"><%:ids_sim_pinCode%>:</label>
+						        <div class="controls">
+						            <input type="password" class="cbi-input-text" name="pin" maxlength="8"/>
+						        </div>
+						    </div>
+						    
+						    <div class="control-group">
+						        <label class="control-label"><%:ids_sim_remaining%>:</label>
+						        <div class="controls"><span class="label_PinTimes"></span></div>
+						    </div>
+						</fieldset>
+					</div>
+					<div class="text-center">
+					    <button type="submit" class="btn btn-primary"><%:ids_apply%></button>
+					    <button type="reset" class="btn btn-primary" onclick="uiHideChangePinStateBox()"><%:ids_cancel%></button>
+					</div>		
+				</form>
+	    	</div>
+
+	    </fieldset>
+	</div>
+</div>
+<!-- SIM Ready End-->
+<%+footer%>

@@ -1,0 +1,16 @@
+#!/bin/sh                                                                                                                                                                       
+. /lib/functions.sh                                                                                                                                                             
+config_load wireless                                                                                                                                                            
+local wps_hotplug                                                                                     
+if [ "$ACTION" = "released" -a "$BUTTON" = "wps" ] && [ 1 -le $SEEN ]; then
+    for dir in /var/run/hostapd-*; do
+        [ -d "$dir" ] || continue
+        if [ "$dir" = "/var/run/hostapd-phy0" ];then
+            config_get wps_hotplug radio0 wps_hotplug
+        elif [ "$dir" = "/var/run/hostapd-phy1" ];then
+            config_get wps_hotplug radio1 wps_hotplug
+        fi
+        logger "WPS button action=$ACTION wps_hotplug = $wps_hotplug: $dir for $SEEN seconds"
+        [ 1 -eq $wps_hotplug ] && hostapd_cli -p "$dir" wps_pbc
+        done
+fi

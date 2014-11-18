@@ -1,0 +1,7 @@
+config vsftpd config
+	option 'enabled' '0'
+	option 'root_dir' '/mnt/usb'
+	option 'anonymous' '0'
+	option 'username' 'admin'
+	option 'auth_type' '1'
+

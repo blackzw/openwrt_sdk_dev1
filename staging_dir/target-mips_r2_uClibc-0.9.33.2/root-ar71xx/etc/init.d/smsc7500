@@ -1,0 +1,25 @@
+#!/bin/sh /etc/rc.common
+#
+# Copyright (c) 2014 TCL Communication Technology Holdings LTD.
+# Author: Quancheng Liu <quancheng.liu@jrdcom.com>
+#
+# All Rights Reserved.
+# TCL Confidential and Proprietary.
+#
+
+# We don't want to start SMSC7500 automatically at boot time as we want the
+# default to be a working user configuration.
+# At the end of the boot process, the user can start art using:
+# /etc/init.d/smsc7500 start
+
+START=
+SERVICE_DAEMONIZE=1
+SERVICE_WRITE_PID=1
+
+start() {
+	insmod /lib/modules/3.3.8/smsc7500.ko
+}
+
+stop() {
+	rmmod /lib/modules/3.3.8/smsc7500.ko
+}

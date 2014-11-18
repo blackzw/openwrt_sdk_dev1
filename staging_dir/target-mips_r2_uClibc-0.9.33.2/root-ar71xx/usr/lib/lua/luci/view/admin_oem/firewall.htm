@@ -1,0 +1,60 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+
+function uiPageInit(){
+	$(".text-center button").setBtnDisabled();
+	uiShowFirewallSettings();
+	$("[name='wanPortPing']").bind("input change keyup keydown paste",function(){
+   		$(".text-center button").removeBtnDisabled();
+	});
+}
+
+function uiShowFirewallSettings(){
+	var firewallSettings = SDK.Firewall.GetFirewallSettings();
+	$("[name='wanPortPing'][value='"+firewallSettings.WanPortPingState+"']").attr("checked","checked");
+}
+
+function uiSetFirewallSettings(){
+	var wanPortPingState = parseInt($("[name='wanPortPing']:checked").val())
+	var result = SDK.Firewall.SetFirewallSettings({"WanPortPingState":wanPortPingState});
+	if(result.error == 0){
+		sys.alert("<%:ids_succeeded%>",function(){
+			uiPageInit();
+		})
+	}else{
+		sys.alert("<%:ids_failed%>",function(){
+			uiPageInit();
+		})
+	}
+
+}
+</script>
+<div class="border-notop form-horizontal main-box">
+	<!-- firewall Start-->
+	<div class="pt100">	    
+	    <div class="control-group">
+	        <label class="control-label"><%:ids_filter_wanPortPing%>:</label>
+	        <div class="controls">
+	            <label class="radio inline">
+	            	<input type="radio" name="wanPortPing" value="1" checked="checked"/><%:ids_enable%>
+	            </label>
+	            <label class="radio inline">
+	            	<input type="radio" name="wanPortPing" value="0" /><%:ids_disable%>
+	            </label>
+	        </div>
+	    </div>
+		<div class="text-center">
+		    <button type="button" class="btn btn-primary" onclick="uiSetFirewallSettings()"><%:ids_apply%></button>
+		    <button type="button" class="btn btn-primary" onclick="uiPageInit()"><%:ids_cancel%></button>
+		</div>
+		<div class="alert alert-error span10 offset1 mt20">
+			<b><%:ids_note%>:</b><%:ids_filter_firewallDescription%>
+		</div>	
+	</div>
+	
+</div>
+<!-- SIM Ready End-->
+<%+footer%>

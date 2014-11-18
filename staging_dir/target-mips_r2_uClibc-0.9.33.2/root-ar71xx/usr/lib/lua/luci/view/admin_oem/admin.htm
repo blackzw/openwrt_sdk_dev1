@@ -1,0 +1,170 @@
+<%+header%>
+
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+	/* Global */
+	var userName, currPassword, newPassword, confirmPassword;
+	var baseHref_all = "<%=REQUEST_URI%>";
+
+	/* 	logic control */
+	function uiPageInit()
+	{
+		initGlobleParam();
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		$("#set_btnApply").click(applyEnvent);
+		$("#set_btnCancel").click(function()
+		{
+			location.href = baseHref_all;
+		});
+		$("input[type='text'],input[type='password']").bind("input change keyup keydown paste", function()
+		{
+			$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+		})
+		$("#userName").val("admin").attr("readOnly", true);
+		$("#currPassword").select().focus();
+	}
+	function initGlobleParam()
+	{
+		 userName= "";
+		 currPassword= "";
+		 newPassword="";
+		 confirmPassword="";
+	}
+	function applyEnvent()
+	{
+		var $userName = $("#userName");
+		var $currPassword = $("#currPassword");
+		var $newPassword = $("#newPassword");
+		var $confirmPassword = $("#confirmPassword");
+
+		userName = $userName.val();
+		currPassword = $currPassword.val();
+		newPassword = $newPassword.val();
+		confirmPassword = $confirmPassword.val();
+
+		if (userName == null || userName == "")
+		{
+			$userName.showRule("<%:ids_admin_userNameEmptyPrompt%>");
+			return;
+		}
+		if (!checkUserName(userName))
+		{
+			$userName.showRule('<%:ids_admin_userNameRulePrompt%>');
+			return;
+		}
+
+		/* if (currPassword == null || currPassword == "")
+		{
+			$currPassword.showRule("<%:ids_admin_currPasswordEmptyPrompt%>");
+			return;
+		} */
+
+		if (!check_password(currPassword) && (currPassword != null && currPassword != ""))
+		{
+			$currPassword.showRule('<%:ids_admin_passwordRulePrompt%>');
+			return;
+		}
+
+		if (newPassword == null || newPassword == "")
+		{
+			$newPassword.showRule("<%:ids_admin_newPasswordEmptyPrompt%>");
+			return;
+		}
+		if (!check_password(newPassword))
+		{
+			$newPassword.showRule('<%:ids_admin_passwordRulePrompt%>');
+			return;
+		}
+
+		if (confirmPassword == null || confirmPassword == "")
+		{
+			$confirmPassword.showRule("<%:ids_admin_confirmEmptyPrompt%>");
+			return;
+		}
+		if (!check_password(confirmPassword))
+		{
+			$confirmPassword.showRule('<%:ids_admin_passwordRulePrompt%>');
+			return;
+		}
+		if (newPassword != confirmPassword)
+		{
+			$confirmPassword.showRule('<%:ids_admin_confirmPdwNotSame%>');
+			return;
+		}
+
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		var params = {
+			"UserName" : userName,
+			"currPassword" : currPassword,
+			"NewPassword" : newPassword
+		}
+
+		var result = SDK.User.ChangePassword(params.UserName, params.currPassword, params.NewPassword).error;
+		if (result == API_RESULT_SUCCESS)
+		{
+			sys.alert("<%:ids_succeeded%>", function()
+			{
+				location.href = baseHref_all;
+			});
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+			});
+		}
+
+	}
+
+	/* Util */
+	function check_password(str)
+	{
+		return /^[A-Za-z0-9\-\+\!\^\$\@\#\&\*]{4,16}$/.test(str);
+	}
+	function checkUserName(name)
+	{
+		return !(/[:;\,\"\\&%<>?\+]+\./g.test(name));
+	}
+</script>
+
+<!-- SMS Settings -->
+<div class="main-box border-notop form-horizontal">
+	<div class="form" id="system_admin_page_map">
+		<div class="cbi-map">
+			<fieldset class="cbi-section form-field">
+				<div class="control-group">
+					<label class="control-label"><%:ids_admin_userName%>:</label>
+					<div class="controls">
+						<input type="text" name="" id="userName" size="30" value="" />
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_admin_currPwd%>:</label>
+					<div class="controls">
+						<input type="password" name="" id="currPassword" size="30" value="" />
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_admin_newPwd%>:</label>
+					<div class="controls">
+						<input type="password" name="" id="newPassword" size="30" value="" />
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_admin_confPwd%>:</label>
+					<div class="controls">
+						<input type="password" name="" id="confirmPassword" size="30" value="" />
+					</div>
+				</div>
+				<div class="text-center">
+					<button class="btn btn-primary" id="set_btnApply"><%:ids_apply%></button>
+					<button class="btn btn-primary" id="set_btnCancel"><%:ids_cancel%></button>
+				</div>
+			</fieldset>
+		</div>
+	</div>
+</div>
+<%+footer%>

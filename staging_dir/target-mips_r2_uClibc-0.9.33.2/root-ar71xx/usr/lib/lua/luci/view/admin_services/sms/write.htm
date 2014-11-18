@@ -1,0 +1,546 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+
+	<%+admin_oem/simCommonFn%>
+	/* 	global variable */
+	SMS_SendStatus_None = 0;
+	SMS_SendStatus_Sending = 1;
+	SMS_SendStatus_Success = 2;
+	SMS_SendStatus_Fail = 3;
+
+	var baseHref_all = "<%=REQUEST_URI%>";
+	var currListType, doAction, currentPage, currSmsId;
+	var singleSms, smsNumber, smsContent;
+	var sms_currentCount, sms_totalCount,sim_currentCount,device_currentCount,sim_totalCount,device_totalCount;
+	var transCurrListType, baseHref;
+	var sms_sendStatus, sms_send_index;
+
+	var SMS_UCS2_MAX_SIZE = 670;//70*10
+	var SMS_7BIT_MAX_SIZE = 1530;//153*10
+
+	var GSM_7BIT_NUM = 128;
+
+	var arrayGSM_7DefaultTable = [ 0x0040, 0x00A3, 0x0024, 0x00A5, 0x00E8, 0x00E9, 0x00F9, 0x00EC, 0x00F2, 0x00C7, 0x000A, 0x00D8, 0x00F8, 0x000D, 0x00C5, 0x00E5, 0x0394, 0x005F, 0x03A6, 0x0393, 0x039B, 0x03A9, 0x03A0, 0x03A8, 0x03A3, 0x0398, 0x039E, 0x001B, 0x00C6, 0x00E6, 0x00DF, 0x00C9, 0x0020, 0x0021, 0x0022, 0x0023, 0x00A4, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F, 0x0030, 0x0031, 0x0032, 0x0033, 0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x003A,
+		0x003B, 0x003C, 0x003D, 0x003E, 0x003F, 0x00A1, 0x0041, 0x0042, 0x0043, 0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x004A, 0x004B, 0x004C, 0x004D, 0x004E, 0x004F, 0x0050, 0x0051, 0x0052, 0x0053, 0x0054, 0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005A, 0x00C4, 0x00D6, 0x00D1, 0x00DC, 0x00A7, 0x00BF, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006A, 0x006B, 0x006C, 0x006D, 0x006E, 0x006F, 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079,
+		0x007A, 0x00E4, 0x00F6, 0x00F1, 0x00FC, 0x00E0 ];
+
+	var arrayGSM_7ExtTable = [ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x000A, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x005E, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x007B, 0x007D, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x005C, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+		0x005B, 0x007E, 0x005D, 0xFFFF, 0x007C, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x20AC, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+		0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF ];
+
+	/* 	logic control */
+
+	function uiPageInit()
+	{
+		simInfo = SDK.SIM.GetSimStatus();
+		var simState;
+		if (!simInfo.hasOwnProperty("error"))
+		{
+			simState = simInfo.SIMState;
+		}
+		var $textShowBox = $("#text_show_box");
+		$("#sms_NewPage_map").hide();
+		$textShowBox.hide();
+		if(simState == G_SDK_SIM_STATE_READY){
+			uiShowNewSMS();
+		}else{
+			$textShowBox.show().html(simUiFn.getSimStatus(simState));
+		}
+		$("#phoneNumbers").unbind().bind("input change keyup keydown paste",function(){
+			listenCharCount();
+		})
+
+	}
+
+	function uiShowNewSMS()
+	{
+		formload();
+		$("#sms_NewPage_map").show();
+		doActionFun(doAction);
+
+		$("#new_btnBack, #new_btnSave,#new_btnSend").removeBtnDisabled();
+
+		$("#new_btnBack").click(function()
+		{
+			smsGoBack();
+		});
+		$("#new_btnSend").click(function()
+		{
+			sendEvent();
+		});
+		$("#new_btnSave").click(function()
+		{
+			saveEvent();
+		});
+		listenCharCount();
+		$("#messageContent").bind("input change keyup keydown paste", function()
+		{
+			listenCharCount();
+		});
+
+	}
+
+	function formload()
+	{
+		currListType = getUrlPara("list");
+		doAction = getUrlPara("doAction");
+		currentPage = parseInt(getUrlPara("pageNum"));
+		currSmsId = parseInt(getUrlPara("sms_id"));
+
+		getTransCurrListType();
+		storageInfo = SDK.SMS.GetSmsStorageState();
+		if (!storageInfo.hasOwnProperty("error"))
+		{
+			device_currentCount = storageInfo.result.DeviceUsed || 0;
+			device_totalCount = storageInfo.result.DeviceTotal || 0;
+			sim_currentCount = storageInfo.result.SimUsed || 0;
+			sim_totalCount = storageInfo.result.SimTotal || 0;
+			sms_currentCount = sim_currentCount + device_currentCount;
+			sms_totalCount = sim_totalCount + device_totalCount;
+
+		}
+
+		baseHref = baseHref_all.split("sms")[0] + "sms";
+
+		if (isNumber(currSmsId))
+		{
+			singleSms = getUniqueSMS(currSmsId, transCurrListType, currentPage);
+			smsNumber = singleSms.Number;
+			smsContent = singleSms.Content;
+		}
+	}
+
+	function doActionFun(doAction)
+	{
+		switch (doAction)
+		{
+		case "reply":
+			doReply();
+			break;
+		case "forward":
+			doFoward();
+			break;
+		case "edit":
+			doEdit();
+			break;
+		default:
+			doWrite();
+		}
+	}
+
+	function getTransCurrListType()
+	{
+		switch (currListType)
+		{
+		case "read":
+			transCurrListType = 0;
+			break;
+		case "sent":
+			transCurrListType = 1;
+			break;
+		case "draft":
+			transCurrListType = 2;
+			break;
+		default:
+			transCurrListType = 0;
+		}
+	}
+
+	function doReply()
+	{
+		if (sms_currentCount == sms_totalCount && sms_totalCount != null && sms_totalCount != 0)
+		{
+			sys.alert("<%:ids_sms_deviceFullPrompt%>");
+		}
+		$("#new_btnBack, #new_btnSave,#new_btnSend").css("display", "");
+		$("#phoneNumbers").val(smsNumber);
+		$("#messageContent").val("").focus();
+	}
+
+	function doFoward()
+	{
+	if (sms_currentCount == sms_totalCount && sms_totalCount != null && sms_totalCount != 0)
+		{
+
+			sys.alert("<%:ids_sms_deviceFullPrompt%>");
+		}
+		$("#new_btnBack, #new_btnSave,#new_btnSend").css("display", "");
+		$("#phoneNumbers").val("").focus();
+		$("#messageContent").val(smsContent);
+	}
+
+	function doEdit()
+	{
+		$("#new_btnBack, #new_btnSave,#new_btnSend").css("display", "");
+		$("#phoneNumbers").val(smsNumber);
+		$("#messageContent").val(smsContent).focus();
+	}
+
+	function doWrite()
+	{
+		if (sms_currentCount == sms_totalCount && sms_totalCount != null && sms_totalCount != 0)
+		{
+			sys.alert("<%:ids_sms_deviceFullPrompt%>");
+		}
+		$("#new_btnBack").css("display", "none");
+		$("#phoneNumbers").val("").focus();
+		$("#messageContent").val("");
+		$("#new_btnSave,#new_btnSend").css("display", "");
+	}
+
+	function smsGoBack()
+	{
+		url = baseHref + "/" + currListType + "?pageNum=" + currentPage;
+		location.href = url;
+	}
+
+	function sendEvent()
+	{
+		if (!checkCount())
+		{
+			sys.alert("<%:ids_sms_deviceFullPrompt%>");
+			return;
+		}
+		var params = $.extend(getParams(), {
+			"Priority" : "Normal"
+		});
+		if (checkPara("send") == true)
+		{
+			$("#new_btnBack, #new_btnSave,#new_btnSend").setBtnDisabled();
+			sys.prompt('<div id="showResultDiv">' + "<%:ids_sms_sendingPrompt%>" + '</div>', -1);
+			setTimeout(function()
+			{
+				var data = SDK.SMS.SendSms(params.Id, params.Content, params.PhoneNumber, params.Priority);
+				if (data.hasOwnProperty("error") || data == null)
+				{
+					sys.alert("<%:ids_failed%>", function()
+					{
+						url = baseHref + "/draft?pageNum=1";
+						location.href = url;
+					});
+
+				} else
+				{
+					sms_send_index = data.result.SmsSendId;
+					if (!isNaN(sms_send_index))
+					{
+						startHeartBeat();
+						startGetSendResult();
+					} else
+					{
+						sys.alert("<%:ids_failed%>", function()
+						{
+							url = baseHref + "/draft?pageNum=1";
+							location.href = url;
+						});
+					}
+				}
+			}, 60);
+		}
+
+	}
+
+	function startGetSendResult()
+	{
+		interGetSendResult = setTimeout("showResult()", 5000);
+	}
+
+	function showResult()
+	{
+		var $showResultDiv = $("#showResultDiv");
+		var $showResultDivLen = $showResultDiv.length;
+		if ($showResultDivLen < 1)
+		{
+			return;
+		}
+		SDK.SMS.GetSmsSendResult(sms_send_index, function(data)
+		{
+			if (data != null && !data.hasOwnProperty("error"))
+			{
+				sms_sendStatus = data.SendStatus;
+			}
+			if (sms_sendStatus < SMS_SendStatus_Success)
+			{
+				startGetSendResult();
+			} else if (sms_sendStatus == SMS_SendStatus_Success)
+			{
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					url = baseHref + "/sent?pageNum=1";
+					location.href = url;
+				});
+			} else
+			{
+				sys.alert("<%:ids_failed%>", function()
+				{
+					url = baseHref + "/draft?pageNum=1";
+					location.href = url;
+				});
+			}
+		});
+	}
+
+	function saveEvent()
+	{
+		if (!checkCount())
+		{
+			sys.alert("<%:ids_sms_deviceFullPrompt%>");
+			return;
+		}
+		var params = getParams();
+		if (checkPara("save") == true)
+		{
+
+			$("#new_btnBack, #new_btnSave,#new_btnSend").setBtnDisabled();
+			setTimeout(function()
+			{
+				var result = SDK.SMS.SaveSms(params.Id, params.PhoneNumber, params.Content).error;
+				if (result == API_RESULT_SUCCESS)
+				{
+					sys.alert("<%:ids_succeeded%>", function()
+					{
+						url = baseHref + "/draft?pageNum=1";
+						location.href = url;
+					});
+				} else
+				{
+					sys.alert("<%:ids_failed%>", function()
+					{
+						//page.changePage("sms/smsList.html?list=draft");
+						var baseHref_all = "<%=REQUEST_URI%>";
+					});
+				}
+			}, 60);
+		}
+		;
+	}
+
+	/* --Util-- */
+
+	function getParams()
+	{
+		var sms_id;
+		if (currSmsId == null || currSmsId == "" || currListType != "draft")
+		{
+			sms_id = -1;
+		} else
+		{
+			sms_id = currSmsId;
+		}
+		//			"Priority" : "Normal"
+		var params = {
+			"Id" : sms_id,
+			"Content" : $("#messageContent").val(),
+			"PhoneNumber" : $.trim($("#phoneNumbers").val())
+		};
+		return params;
+	}
+
+	function checkPara(action)
+	{
+		var inputNumbers = $("#phoneNumbers");
+		var numbers = $.trim(inputNumbers.val());
+		var messageContent = $("#messageContent").val();
+		var i;
+		if (numbers != "")
+		{
+			for (i = 0; i < numbers.length; i++)
+			{
+				char_i = numbers.charAt(i);
+				num_char_i = char_i.charCodeAt();
+				if ((num_char_i < 48) || (num_char_i > 57))
+				{
+					if (i == 0 && num_char_i == 43)
+					{
+						continue;
+					}
+					inputNumbers.showRule("<%:ids_sms_numberRule%>");
+					return false;
+				}
+			}
+		} else if (numbers == "")
+		{
+			if (action == "send" || (action == "save" && messageContent == ""))
+			{
+				inputNumbers.showRule("<%:ids_sms_mobileNumberPrompt%>");
+				return false;
+			}
+		}
+		return true;
+	}
+
+	function checkCount()
+	{
+		if (currListType != "draft" && sms_currentCount == sms_totalCount && sms_totalCount != 0)
+		{
+			return false;
+		}
+		var oldCount = 0;
+		var newCount = 0;
+		var content = $("#messageContent").val();
+		var isUCS2;
+		if (isUcs2(content))
+		{
+			isUCS2 = true;
+		} else
+		{
+			isUCS2 = false;
+		}
+		if (currListType == "draft")
+		{
+			if (isUcs2(smsContent))
+			{
+				oldCount = smsContent.length / 67;
+			} else
+			{
+				oldCount = parseInt(smsContent.length + get7ExtNum(smsContent)) / 153;
+			}
+		}
+		oldCount = Math.ceil(oldCount);
+		oldCount = oldCount >= 1 ? oldCount : 1;
+		if (isUCS2)
+		{
+			newCount = content.length / 67;
+		} else
+		{
+			newCount = parseInt(content.length + get7ExtNum(content)) / 153;
+		}
+
+		newCount = Math.ceil(newCount);
+		var addCount = newCount - oldCount;
+		if (sms_totalCount - sms_currentCount - addCount >= 0)
+		{
+			return true;
+		} else
+		{
+			return false;
+		}
+	}
+
+	function get7ExtNum(str)
+	{
+		var i;
+		var j;
+		var char_i;
+		var num_char_i;
+		var num7Ext = 0;
+		for (i = 0; i < str.length; i++)
+		{
+			char_i = str.charAt(i);
+			num_char_i = char_i.charCodeAt();
+			for (j = 0; j < GSM_7BIT_NUM; j++)
+			{
+				if (num_char_i == arrayGSM_7ExtTable[j])
+				{
+					num7Ext++;
+				}
+			}
+		}
+		return num7Ext;
+	}
+
+	function ucs2_number_check(str)
+	{
+		var i;
+		var char_i;
+		var num_char_i;
+
+		var j;
+		var flag;
+		var ucs2_num_temp = 0;
+
+		if (str.length == 0)
+		{
+			return 0;
+		}
+		for (i = 0; i < str.length; i++)
+		{
+			flag = 0;
+			char_i = str.charAt(i);
+			num_char_i = char_i.charCodeAt();
+			for (j = 0; j < GSM_7BIT_NUM; j++)
+			{
+				if ((num_char_i == arrayGSM_7DefaultTable[j]) || (num_char_i == arrayGSM_7ExtTable[j]))
+				{
+					flag = 1;
+					break;
+				}
+			}
+			if (0 == flag)
+			{
+				ucs2_num_temp++;
+			}
+		}
+		return ucs2_num_temp;
+	}
+
+	function isUcs2(str)
+	{
+		return ucs2_number_check(str) > 0 ? true : false;
+	}
+
+	function listenCharCount()
+	{
+		var content = $("#messageContent").val();
+		var contentLength = content.length;
+		var contentNum = 0;
+		var MaxLength = SMS_7BIT_MAX_SIZE;
+		if (isUcs2(content))
+		{
+			MaxLength = SMS_UCS2_MAX_SIZE;
+			contentNum = contentLength;
+		} else
+		{
+			contentNum = parseInt(contentLength + get7ExtNum(content));
+		}
+		if (contentNum > MaxLength)
+		{
+			$("#smsMaxNumWarn").css("display", "");
+			$("#new_btnSave,#new_btnSend").setBtnDisabled();
+		} else
+		{
+			$("#smsMaxNumWarn").css("display", "none");
+			$("#new_btnSave,#new_btnSend").removeBtnDisabled();
+		}
+		$("#smsCharCount").html(contentNum + "/" + MaxLength);
+	}
+
+	function isNumber(str)
+	{
+		return /^-?[0-9]+$/.test(str);
+	}
+</script>
+
+<!-- SMS New -->
+<div class="main-box border-notop form-horizontal">
+	<div id="sms_NewPage_map" style="display: none">
+		<div class="control-group pt20">
+			<label class="control-label" for=""><%:ids_sms_titleMobileNumber%>:</label>
+			<div class="controls">
+				<input type="text" id="phoneNumbers" size="30" maxlength="20" value="">
+			</div>
+		</div>
+
+		<div class="control-group" id="">
+			<div class="controls">
+				<p class="text-right mr200">
+					<span id="smsCharCount"></span>
+				</p>
+				<textarea id="messageContent" style="width:73%" class="cbi-input-textarea" rows="10"></textarea>
+				<p class="alert alert-error mt20 mr200" id="smsMaxNumWarn" style="display: none"><%:ids_sms_contentRule%></p>
+			</div>
+		</div>
+		<div class="text-center pt10">
+			<button class="btn btn-primary" id="new_btnBack" style="display: none"><%:ids_back%></button>
+			<button class="btn btn-primary" id="new_btnSend"><%:ids_send%></button>
+			<button class="btn btn-primary" id="new_btnSave"><%:ids_save%></button>
+		</div>
+	</div>
+	<!-- simcard status -->
+	<div id="text_show_box" style="display: none"></div>
+</div>
+<%+footer%>

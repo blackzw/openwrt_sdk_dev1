@@ -1,0 +1,125 @@
+#!/bin/sh
+# Copyright (C) 2012-2014 PIVA Software <www.pivasoftware.com>
+# 	Author: MOHAMED Kallel <mohamed.kallel@pivasoftware.com>
+# 	Author: AHMED Zribi <ahmed.zribi@pivasoftware.com>
+# Copyright (C) 2011-2012 Luka Perkov <freecwmp@lukaperkov.net>
+
+get_device_config_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.DeviceConfig." "" "0"
+	;;
+esac
+}
+
+get_device_config_file() {
+	local param="InternetGatewayDevice.DeviceConfig.ConfigFile"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	case "$action" in
+		get_value)
+			val=`ls /etc/config/`
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$param"
+			;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_config_restore_flag() {
+	local param="InternetGatewayDevice.DeviceConfig.RestoreFlag"
+	local nl="$1"
+	local val=""
+	local type="xsd:boolean"
+	local permissions="0"
+	case "$action" in
+		get_value)
+			val="1.0"
+			;;
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$param"
+			;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_device_config_notification()
+{
+    local param="$1"
+    local val="$2"
+    easycwmp_set_parameter_notification "$param" "$val"
+    return 0
+}
+
+get_device_config_info() {
+	get_device_config_file $1
+	get_device_config_restore_flag $1
+}
+
+get_device_config() {
+case "$1" in
+	InternetGatewayDevice.)
+		get_device_config_object 0
+		get_device_config_info $2
+		return 0
+		;;
+
+	InternetGatewayDevice.DeviceConfig.)
+		get_device_config_object $2
+		get_device_config_info 0
+		return 0
+		;;
+
+	InternetGatewayDevice.DeviceConfig.ConfigFile)
+		get_device_config_file $2
+		return $?
+		;;
+
+	InternetGatewayDevice.DeviceConfig.RestoreFlag)
+		get_device_config_restore_flag $2
+		return $?
+		;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_device_config() {
+case "$1" in
+	InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+
+	InternetGatewayDevice.DeviceConfig.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+
+	InternetGatewayDevice.DeviceConfig.ConfigFile)
+	[ "$action" = "set_notification" ] && set_device_config_notification "$1" "$2"
+	return $?
+	;;
+
+	InternetGatewayDevice.DeviceConfig.RestoreFlag)
+	[ "$action" = "set_notification" ] && set_device_config_notification "$1" "$2"
+	return $?
+	;;
+esac
+
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_device_config() { return 0; }
+
+add_object_device_config() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_device_config() { return $E_INVALID_PARAMETER_NAME; }

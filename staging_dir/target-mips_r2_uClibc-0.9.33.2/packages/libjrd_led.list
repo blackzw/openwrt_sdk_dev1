@@ -1,0 +1,7 @@
+./
+./usr
+./usr/include
+./usr/include/jrd_led.h
+./usr/lib
+./usr/lib/libjrd_led.so
+./host

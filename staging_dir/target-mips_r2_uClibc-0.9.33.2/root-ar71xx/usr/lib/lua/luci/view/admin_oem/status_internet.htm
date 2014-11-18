@@ -1,0 +1,287 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+<%+admin_oem/simCommonFn%>
+
+function uiPageInit(){
+	refreshNetworkInfoFlag = true;
+	var $mainBox = $("#main_box");
+	var simInfo = SDK.SIM.GetSimStatus();
+	var simState = simInfo.SIMState;
+	var dataInfo;
+
+	if(simState == G_SDK_SIM_STATE_READY){
+		var connectionInfo = SDK.WanConnection.GetConnectionState();
+		var networkInfo = SDK.Network.GetNetworkInfo();
+		dataInfo = {
+			"simStatus":simState,
+			"connectionStatus":connectionInfo.ConnectionStatus,
+			"networkType":networkInfo.NetworkType,
+			"networkName":networkInfo.NetworkName,
+			"roaming":networkInfo.Roaming,
+			"profileName":connectionInfo.ConnectProfile,
+			"ipAddress":connectionInfo.IPv4Address,
+			"ipV6Address":connectionInfo.IPv6Address
+		}
+	}else{
+		dataInfo = {
+			"simStatus":simState,
+			"connectionStatus":G_SDK_NETWORK_CONNCTION_DISCONNECTED,
+			"networkType":G_SDK_NETWORK_TYPE_NO_SERVICE,
+			"networkName":"",
+			"roaming":G_SDK_ROAM_STATE_NO,
+			"profileName":"",
+			"ipAddress":"",
+			"ipV6Address":""
+		}
+	}
+	uiShowInternetStatus(dataInfo);
+}
+
+function uiShowInternetStatus(data){
+	$("#span_simStatus").html(simUiFn.getSimStatus(data.simStatus));
+	$("#span_connectionState").html(uiGetConnectionStatus(data.connectionStatus));
+	$("#span_networkName").html(uiGetNetworkName(data.networkName));
+	$("#span_RoamStatus").html(uiGetRoamStatus(data.roaming));
+	$("#span_networkType").html(uiGetNetworkType(data.networkType));
+	$("#span_profileName").html(uiGetProfileName(data.profileName));
+	$("#span_ipAddress").html(uiGetWanIpAddress(data.connectionStatus,data.ipAddress));
+	$("#span_ipV6Address").html(uiGetWanIpV6Address(data.connectionStatus,data.ipV6Address));
+	uiShowPinStatusLink(data.simStatus);
+	uiShowConnectOrDisconnectBtn(data.simStatus,data.connectionStatus);
+}
+
+function uiShowPinStatusLink(simState){
+	$(".sim-status-link").hide();
+	switch(simState){
+		case G_SDK_SIM_STATE_PIN:
+		case G_SDK_SIM_STATE_PUK:
+		case G_SDK_SIM_STATE_SIMLOCK:
+			$("#btn_link_enter_code").css("display","inline-block");
+			break;
+	}
+
+}
+
+function uiShowConnectOrDisconnectBtn(simStatus,connectionState){
+	$(".wan_btn").hide();
+	if(simStatus == G_SDK_SIM_STATE_READY){
+		switch(connectionState){
+		case G_SDK_NETWORK_CONNCTION_CONNECTED:
+			$("#btn_disconnect").show();
+			break;
+		case G_SDK_NETWORK_CONNCTION_DISCONNECTED:
+			$("#btn_connect").show();
+			break;
+		}
+	}
+}
+
+function uiGetConnectionStatus(connectionState){
+	var str = "";
+	switch(connectionState){
+		case G_SDK_NETWORK_CONNCTION_CONNECTING:
+			str = "<%:ids_connecting%>";
+			break;
+		case G_SDK_NETWORK_CONNCTION_CONNECTED:
+			str = "<%:ids_connected%>";
+			break;
+		case G_SDK_NETWORK_CONNCTION_DISCONNECTING:
+			str = "<%:ids_disconnecting%>";
+			break;
+		default:
+			str = "<%:ids_disconnected%>";
+	}
+	return str;
+
+}
+
+function uiGetNetworkName(networkName){
+	var str;
+	switch (networkName) {
+        case "CHINA UNICOM":
+        case "CHN CU":
+            str = "CHINA UNICOM";
+            break;
+        case "":
+            str = "NA";
+            break;
+        default:
+            str = networkName;
+    }
+    return str;
+}
+
+function uiGetNetworkType(networkType){
+	var str = "<%:ids_unknown%>";
+	switch(networkType){
+		case G_SDK_NETWORK_TYPE_NO_SERVICE:
+			str = "<%:ids_netwrok_noService%>";
+			break;
+		case G_SDK_NETWORK_TYPE_GPRS:
+			str = "GPRS";
+			break;
+		case G_SDK_NETWORK_TYPE_EDGE:
+			str = "EDGE";
+			break;
+		case G_SDK_NETWORK_TYPE_UMTS:
+			str = "UMTS";
+			break;
+		case G_SDK_NETWORK_TYPE_HSDPA:
+			str = "HSDPA";
+			break;
+		case G_SDK_NETWORK_TYPE_HSPA:
+			str = "HSPA";
+			break;
+		case G_SDK_NETWORK_TYPE_HSUPA:
+			str = "HSUPA";
+			break;
+		case G_SDK_NETWORK_TYPE_DC_HSPA_PLUS:
+			str = "DC-HSPA+";
+			break;
+		case G_SDK_NETWORK_TYPE_LTE:
+			str = "LTE";
+			break;
+		case G_SDK_NETWORK_TYPE_GSM:
+			str = "GSM";
+			break;
+		case G_SDK_NETWORK_TYPE_HSPA_PLUS:
+			str = "HSPA+";
+			break;
+		case G_SDK_NETWORK_TYPE_UNKNOWN:
+			str = "<%:ids_unknown%>";
+			break;
+		default:
+			str = "<%:ids_unknown%>";
+	}
+	return str;
+
+}
+
+function uiGetWanIpAddress(connectionState,ipAddress){
+	var str = "";
+	if((connectionState == G_SDK_NETWORK_CONNCTION_CONNECTED || connectionState == G_SDK_NETWORK_CONNCTION_CONNECTING) && ipAddress !== ""){
+		str = ipAddress;
+	}else{
+		str = "----";
+	}
+	return str;
+}
+
+function uiGetWanIpV6Address(connectionState,ipV6Address){
+	var str = "";
+	if((connectionState == G_SDK_NETWORK_CONNCTION_CONNECTED || connectionState == G_SDK_NETWORK_CONNCTION_CONNECTING) && ipV6Address !== ""){
+		str = ipV6Address;
+	}else{
+		str = "----";
+	}
+	return str;
+}
+
+function uiGetRoamStatus(roamState){
+	var str = "";
+	if(roamState == G_SDK_ROAM_STATE_YES){
+		str = "(<%:ids_netwrok_roaming%>)"
+	}
+	return str;
+}
+
+function uiGetProfileName(profileName){
+	return profileName == ""?"NA":profileName;
+}
+
+function uiConnectNetwork(){
+	$("#btn_connect").hide();
+	$("#span_connectionState").html("<%:ids_connecting%>")
+	refreshNetworkInfoFlag = false;
+	var result = SDK.WanConnection.Connect(function(result){
+		if(result.error == 0){
+			uiPageInit();
+		}else if(result.error == 80204){
+			sys.alert("<%:ids_wan_usageHistoryOverflow%>",function(){
+	        	uiPageInit();
+	        });
+		}else{
+			sys.alert("<%:ids_failed%>",function(){
+	        	uiPageInit();
+	        });
+		}
+	});
+    
+}
+
+function uiDisconnectNetwork(){
+	$("#btn_disconnect").hide();
+	$("#span_connectionState").html("<%:ids_disconnecting%>")
+	refreshNetworkInfoFlag = false;
+	var result = SDK.WanConnection.DisConnect(function(result){
+		if(result.error == 0){
+			uiPageInit();
+		}else{
+			sys.alert("<%:ids_failed%>",function(){
+	        	uiPageInit();
+	        });
+		}
+	});
+	
+}
+
+
+
+</script>
+
+<style>
+.sim_card_state{
+	text-align:center;
+	font-weight:bold;
+	margin:40px auto;
+}
+.sim-status-link,.wan_btn{display: none;}
+</style>
+<div class="main-box border-notop">
+	<fieldset class="cbi-section pt20">
+		<table class="table noborder">
+			<tr>
+				<td class="text-right w45"><%:ids_sim_simCardStatus%>:</td>
+				<td><span id="span_simStatus"></span>
+					<span class="pl20">
+						 <a href="<%=controller%>/admin/basicsettings/security/pin/" class="sim-status-link btn-mini btn-primary btn" id="btn_link_enter_code"><%:ids_sim_enterCode%></a> 
+					</span>
+				</td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_netwrok_connectionStatus%>:</td>
+				<td><span id="span_connectionState"></span>
+					<span class="pl20">
+						<button id="btn_disconnect" class="btn btn-primary btn-mini wan_btn" onclick="uiDisconnectNetwork()"><%:ids_disconnected%></button> 
+						<button id="btn_connect" class="btn btn-primary btn-mini wan_btn" onclick="uiConnectNetwork()"><%:ids_connect%></button>
+					</span>
+				</td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_netwrok_networkName%>:</td>
+				<td><span id="span_networkName"></span><span id="span_RoamStatus"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_netwrok_networkType%>:</td>
+				<td><span id="span_networkType"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_profile_name%>:</td>
+				<td><span id="span_profileName"></span></td>
+			</tr>
+			<tr>
+				<td class="text-right w45"><%:ids_netwrok_ipv4Address%>:</td>
+				<td><span id="span_ipAddress"></span></td>
+			</tr>
+
+			<tr>
+				<td class="text-right w45"><%:ids_netwrok_ipv6Address%>:</td>
+				<td><span id="span_ipV6Address">----</span></td>
+			</tr>
+		</table>
+	</fieldset>
+</div>
+<%+footer%>

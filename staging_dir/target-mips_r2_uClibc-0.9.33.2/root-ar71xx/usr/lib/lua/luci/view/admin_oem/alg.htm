@@ -1,0 +1,201 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+	/* Global */
+	SDK_PPTP_STATUS_DISABLE = 0;
+	SDK_PPTP_STATUS_ENABLE = 1;
+	SDK_H323ALG_STATUS_DISABLE = 0;
+	SDK_H323ALG_STATUS_ENABLE = 1;
+	SDK_SIP_ALG_STATUS_DISABLE = 0;
+	SDK_SIP_ALG_STATUS_ENABLE = 1;
+	SDK_FTP_STATUS_DISABLE = 0;
+	SDK_FTP_ALG_STATUS_ENABLE = 1;
+
+	var pptp_status, h323Alg_status, sipAlg_status, sipAlg_port,ftp_status;
+	var baseHref_all = "<%=REQUEST_URI%>";
+	var initSipPort;
+
+
+	/* 	logic control */
+	function uiPageInit()
+	{
+		initGlobleParam()
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		formload();
+		$("#set_btnApply").click(applyEnvent);
+		$("#set_btnCancel").click(function()
+		{
+			location.href = baseHref_all;
+		});
+		$("input[type='radio'],#sipPort").bind("input change keyup keydown paste", function()
+		{
+			$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+		})
+	}
+	function initGlobleParam()
+	{
+		pptp_status=0;
+		h323Alg_status=0;
+		sipAlg_status=0;
+		sipAlg_port="";
+		ftp_status = 0;
+	}
+
+	function formload()
+	{
+		var algInfo = SDK.ALG.GetALGSettings();
+		if (!algInfo.hasOwnProperty("error"))
+		{
+			pptp_status = algInfo.result.PptpStatus || 0;
+			h323Alg_status = algInfo.result.H323AlgStatus || 0;
+			sipAlg_status = algInfo.result.SipAlgStatus || 0;
+			sipAlg_port = algInfo.result.SipAlgPort;
+			ftp_status = algInfo.result.Ftp || 0;
+			initSipPort = algInfo.result.SipAlgPort;
+		}
+		if(initSipPort == ""){
+			initSipPort ="5060";
+		}
+		$("input[name='ftp_name'][value=" + ftp_status + "]").attr("checked", true);
+		$("input[name='pptp_name'][value=" + pptp_status + "]").attr("checked", true);
+		$("input[name='h323_status_name'][value=" + h323Alg_status + "]").attr("checked", true);
+		$("input[name='sip_status_name'][value=" + sipAlg_status + "]").attr("checked", true);
+		$("#sipPort").val(sipAlg_port);
+		uiShowListeningSipPort();
+		$("input[name='sip_status_name']").click(function(){
+			uiShowListeningSipPort();
+		})
+	}
+
+	function applyEnvent()
+	{	
+		var sipAlgStatus =  $("input[name='sip_status_name']:checked").val();
+		var $sipAlg_port = $("#sipPort");
+		var sipAlg_port = $.trim($sipAlg_port.val());
+		if (sipAlgStatus == SDK_SIP_ALG_STATUS_ENABLE && (sipAlg_port == null || sipAlg_port == ""))
+		{
+			$sipAlg_port.showRule("<%:ids_alg_iptSipEmptyPrompt%>");
+			return;
+		}
+		if (sipAlgStatus == SDK_SIP_ALG_STATUS_ENABLE && !checkPortInvalid(sipAlg_port))
+		{
+			$sipAlg_port.showRule("<%:ids_alg_iptSipInvalidPrompt%>");
+			return;
+		}
+		if(sipAlgStatus == SDK_SIP_ALG_STATUS_DISABLE){
+			sipAlg_port = initSipPort;
+		}
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		var params = {
+			"Ftp" : $("input[name='ftp_name']:checked").val(),
+			"PptpStatus" : $("input[name='pptp_name']:checked").val(),
+			"H323AlgStatus" : $("input[name='h323_status_name']:checked").val(),
+			"SipAlgStatus":sipAlgStatus,
+			"SipAlgPort": sipAlg_port
+		};
+
+		var result = SDK.ALG.SetALGSettings(params.Ftp,params.PptpStatus,params.H323AlgStatus,params.SipAlgStatus,params.SipAlgPort).error;
+			if (result == API_RESULT_SUCCESS)
+			{
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					location.href = baseHref_all;
+				});
+			} else
+			{
+				sys.alert("<%:ids_failed%>", function()
+				{
+					$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+				});
+			}
+		
+
+	};
+	/* Util */
+	function checkPortInvalid(port)
+	{
+		var re = /^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]{1}|6553[0-5])$/;
+		return re.test(port);
+	}
+
+
+	function uiShowListeningSipPort(){
+		var $sipPort = $("#sipPort");
+		$(".rule").remove();
+		$(".iptText").removeClass("errorIpt");
+		if(parseInt($("input[name='sip_status_name']:checked").val()) == 0 ){
+			$sipPort.val("").attr("disabled","disabled");
+		}else{
+			$sipPort.removeAttr("disabled").val(initSipPort);
+		}
+	}
+
+</script>
+
+<!-- alg Settings -->
+<div  class="main-box border-notop form-horizontal">
+	<div class="form" id="nat_alg_page_map">
+		<div class="cbi-map pt20">
+			<fieldset class="cbi-section form-field">
+				<div class="control-group">
+						<label class="control-label"><%:ids_samba_menuFtp%>:</label>
+						<div class="controls">
+							<label class="radio inline">
+							  	<input type="radio" id="ftpEnable" name="ftp_name" value="1" /><%:ids_enable%>
+							</label>
+							<label class="radio inline">
+							  	<input type="radio" id="ftpDisable" name="ftp_name" value="0" checked="checked" /><%:ids_disable%>
+							</label>
+						</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_alg_pptp%>:</label>
+					<div class="controls">
+						<label class="radio inline">
+						  	<input type="radio" id="pptpEnable" name="pptp_name" value="1" /><%:ids_enable%>
+						</label>
+						<label class="radio inline">
+						  	<input type="radio" id="pptpDisable" name="pptp_name" value="0" checked="checked" /><%:ids_disable%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_alg_h323Status%>:</label>
+					<div class="controls">
+						<label class="radio inline">
+						  	<input type="radio" id="pptpDisable" name="h323_status_name" value="1" /><%:ids_enable%>
+						</label>
+						<label class="radio inline">
+						  	<input type="radio" id="pptpDisable" name="h323_status_name" value="0" checked="checked" /><%:ids_disable%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_alg_sipStatus%>:</label>
+					<div class="controls">
+						<label class="radio inline">
+						  	<input type="radio" id="" name="sip_status_name" value="1"  /><%:ids_enable%>
+						</label>
+						<label class="radio inline">
+						  	<input type="radio" id="" name="sip_status_name" value="0" checked="checked" /><%:ids_disable%>
+						</label>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_alg_sipPort%>:</label>
+					<div class="controls">
+						<input type="text" name="sip_port_name" id="sipPort" size="20" maxlength="5" value="" />
+					</div>
+				</div>
+				<div class="text-center">
+					<button class="btn btn-primary" id="set_btnApply"><%:ids_apply%></button>
+					<button class="btn btn-primary" id="set_btnCancel"><%:ids_cancel%></button>
+				</div>
+			</fieldset>
+		</div>
+	</div>
+</div>
+<%+footer%>

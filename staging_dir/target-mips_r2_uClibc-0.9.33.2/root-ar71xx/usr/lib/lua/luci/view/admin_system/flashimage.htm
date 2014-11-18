@@ -1,0 +1,57 @@
+<%+header%>
+<script>
+function uiShowUpdateFileUrl(){
+	var $fileUrl = $("#file-url");
+	var $image = $("#image");
+	var image = $image.val();
+	var imageUrlArr = image.split("\\");
+	var imageName = imageUrlArr[imageUrlArr.length-1];
+	$fileUrl.html(imageName);
+}
+function btnDisabled(){
+	$("#btn-update").setBtnDisabled();
+}
+</script>
+<div class="main-box border-notop">
+		<% if upgrade_avail then %>
+			<form method="post" action="<%=REQUEST_URI%>" onsubmit="btnDisabled()" enctype="multipart/form-data" class="form-horizontal pt100">
+			
+				<div class="control-group">
+					<label class="control-label" id="file-url"></label>
+					<div class="controls mb10">
+						<a href="javascript:void(0);" class="btn_addPic">
+					        <span><em>+</em><%:Add files%></span>
+					        <input type="file" name="image" class="filePrew" id="image" onchange="uiShowUpdateFileUrl()">
+					    </a>
+
+						<!-- <input type="file" name="image" id="image" /> -->
+					</div>
+					<div class="controls mb10">
+					    <label class="checkbox" for="keep"><input type="checkbox" name="keep" id="keep" checked="checked" /><%:ids_update_keepSettings%></label>
+				    </div>
+					<div class="controls">
+						<input type="submit" id="btn-update" class="btn btn-primary" value="<%:ids_update_upgrade%>" />
+					</div>
+					<p class="alert alert-error span10 offset1 mt20"><%:ids_update_localUpgradeTips%><p>
+				</div>
+				<% if image_invalid then %>
+				<script>
+					$(function($){
+						sys.alert("<%:ids_update_errorFileFormatTips%>",function(){
+							location.reload();
+						})
+					})
+				</script>
+				<% end %>
+			</form>
+		<% else %>
+			<script>
+				$(function($){
+					sys.alert("<%:ids_update_noSysupgradeSupport%>",function(){
+						location.reload();
+					})
+				})
+			</script>
+		<% end %>
+</div>
+<%+footer%>

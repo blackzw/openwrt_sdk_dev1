@@ -1,0 +1,626 @@
+<%+header%>
+
+
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+
+	<%+admin_oem/simCommonFn%>
+
+	/* 	global variable */
+
+	var SMS_Type_Inbox = 0;
+	var SMS_Type_Outbox = 1;
+	var SMS_Type_Draftbox = 2;
+	var SMS_Type_Status_Report = 3;
+	var SMS_Type_Cell_Broadcast_Message = 4;
+	var All_Message = 5;
+
+	var SMS_Store_ME = 0; //M850
+	var SMS_Store_SIM = 1;
+	var SMS_Store_Device = 2; //H850
+
+	var SMS_Status_Read = 0;
+	var SMS_Status_UnRead = 1;
+
+	var SMS_Paging_Count = 10;
+
+	var sms_viewType; //view Type:list、single
+	var sms_currListType, transCurrListType; //sms current list type:read、sent、draft
+	var sms_storage, sms_currentCount, sms_totalCount,sim_currentCount,device_currentCount,sim_totalCount,device_totalCount;
+	var sms_item_count, sms_total_count, sms_totalPage = 1, sms_currentPage;
+	var simInfo;
+	var baseHref;
+	var baseHref_all = "<%=REQUEST_URI%>";
+
+	/* 	logic control */
+
+	function uiPageInit()
+	{
+		simInfo = SDK.SIM.GetSimStatus();
+		var simState;
+		if (!simInfo.hasOwnProperty("error"))
+		{
+			simState = simInfo.SIMState;
+		}
+		var $textShowBox = $("#text_show_box");
+		$("#sms_list_map").hide();
+		$("#read_sms_map").hide();
+		$textShowBox.hide();
+		if(simState == G_SDK_SIM_STATE_READY){
+			startInit();
+			uiShowSMSList();
+			endInit();
+		}else{
+			$textShowBox.show().html(simUiFn.getSimStatus(simState));
+		}
+	}
+
+	function uiShowSMSList()
+	{
+		formload();
+		if (sms_viewType == "single")
+		{
+			$(".common-box").hide();
+			$("#sms_list_map").hide();
+			$("#read_sms_map").show();
+			initShowSingle();
+			//initShowSingleAffiliated();
+		} else
+		{
+			$(".common-box").hide();
+			$("#sms_list_map").show();
+			$("#read_sms_map").hide();
+			initShowList();
+			initShowListAffiliated();
+		}
+	}
+
+	function formload()
+	{
+		baseHref = "<%=REQUEST_URI%>".split("/sms")[0] + "/sms";
+		sms_viewType = getUrlPara("view") == "" ? "list" : getUrlPara("view");
+		sms_currListType = "<%=list%>";
+		//		sms_storage = SDK.SMS.GetSmsSettings().result.StoreFlag;
+		storageInfo = SDK.SMS.GetSmsStorageState();
+		if (!storageInfo.hasOwnProperty("error"))
+		{
+			device_currentCount = storageInfo.result.DeviceUsed || 0;
+			device_totalCount = storageInfo.result.DeviceTotal || 0;
+			sim_currentCount = storageInfo.result.SimUsed || 0;
+			sim_totalCount = storageInfo.result.SimTotal || 0;
+			sms_currentCount = sim_currentCount + device_currentCount;
+			sms_totalCount = sim_totalCount + device_totalCount;
+		}
+
+		getTransCurrListType();
+
+	}
+
+	function initShowListAffiliated()
+	{
+		$("#deviceCurrSmsCount").html(device_currentCount);
+		$("#deviceTotalSmsCount").html(device_totalCount);
+		$("#simCurrSmsCount").html(sim_currentCount);
+		$("#simTotalSmsCount").html(sim_totalCount);
+		$("#listPage").html(sms_currentPage + "/" + sms_totalPage);
+		$("#spanPageNum").html(sms_currentPage);
+		$("#pageNum").val(sms_currentPage);
+		showSelectPage(sms_totalPage, sms_currentPage);
+
+		$("#btnRefresh").removeBtnDisabled();
+		$("#btnDelete").setBtnDisabled();
+		$("input[name='ckbAllSms']").change(function()
+		{
+			if ($(this).attr("checked") == "checked")
+			{
+				$("input[name='tdunread']").each(function()
+				{
+					$(this).attr("checked", "checked");
+				});
+			} else
+			{
+				$("input[name='tdunread']").each(function()
+				{
+					$(this).attr("checked", null);
+				});
+			}
+			listenMark();
+		});
+		$("input[name='ckbAllSms']").attr("checked", null);
+		$("#btnRefresh").click(function()
+		{
+			location.href = baseHref_all;
+		});
+		$("#btnDelete").click(deletePageEvent);
+		$("#btnPrev").click(function()
+		{
+			switchPage("previous");
+		});
+		$("#btnNext").click(function()
+		{
+			switchPage("next");
+		});
+
+		$("#pageNum").change(function()
+		{
+			changePage($(this).val());
+		});
+
+		$("input[name='tdunread']").change(function()
+		{
+			listenMark();
+		});
+	}
+
+	/* list---show---start */
+
+	function initShowList()
+	{
+		switch (sms_currListType)
+		{
+		case "read":
+			sms_count_info = SDK.SMS.GetSmsCount(SMS_Type_Inbox);
+			if (!sms_count_info.hasOwnProperty("error"))
+			{
+				sms_total_count = sms_count_info.result.SmsCount;
+				sms_totalPage = getTotalPage(sms_total_count);
+			}
+			sms_currentPage = getCurrentPage();
+			var ListInfoRead = SDK.SMS.GetSmsList(SMS_Type_Inbox, sms_currentPage);
+			var lnboxList;
+			if (!ListInfoRead.hasOwnProperty("error"))
+			{
+				lnboxList = ListInfoRead.result.SmsList;
+			}
+			//sms_item_count = lnboxList.length;
+			showSimItem(lnboxList, sms_currListType);
+			break;
+		case "sent":
+			sms_count_info = SDK.SMS.GetSmsCount(SMS_Type_Outbox);
+			if (!sms_count_info.hasOwnProperty("error"))
+			{
+				sms_total_count = sms_count_info.result.SmsCount;
+				sms_totalPage = getTotalPage(sms_total_count);
+			}
+			sms_currentPage = getCurrentPage();
+			var listInfoSend = SDK.SMS.GetSmsList(SMS_Type_Outbox, sms_currentPage);
+			var sendList;
+			if (!listInfoSend.hasOwnProperty("error"))
+			{
+				sendList = listInfoSend.result.SmsList;
+			}
+			//sms_item_count = sendList.length;
+			showSimItem(sendList, sms_currListType);
+			break;
+		case "draft":
+			sms_count_info = SDK.SMS.GetSmsCount(SMS_Type_Draftbox);
+			if (!sms_count_info.hasOwnProperty("error"))
+			{
+				sms_total_count = sms_count_info.result.SmsCount;
+				sms_totalPage = getTotalPage(sms_total_count);
+			}
+			sms_currentPage = getCurrentPage();
+			var listInfoSend = SDK.SMS.GetSmsList(SMS_Type_Draftbox, sms_currentPage);
+			var draftList;
+			if (!listInfoSend.hasOwnProperty("error"))
+			{
+				draftList = listInfoSend.result.SmsList;
+			}
+			//sms_item_count = draftList.length;
+			showSimItem(draftList, sms_currListType);
+			break;
+		default:
+			break;
+		}
+	}
+
+	function showSimItem(smsList, listType)
+	{
+		if (smsList != null)
+		{
+			for ( var e in smsList)
+			{
+				var connectlnbox = smsList[e];
+				if (connectlnbox != "")
+				{
+					addSimItem(connectlnbox, listType);
+				}
+			}
+		}
+	}
+
+	function addSimItem(itemvalue, listType)
+	{
+
+		var _sms_id = itemvalue.Id, _sms_tag = itemvalue.Tag, _sms_number = itemvalue.Number, _sms_time = calcTime(itemvalue.Time), _sms_content = itemvalue.Content;
+		var itemTable = $(".smsTable");
+		var itemStr = "".substring(0, 20);
+		switch (listType)
+		{
+		case "read":
+			var isRead = _sms_tag == SMS_Status_UnRead ? "smsUnRead" : "smsRead";
+			var href = baseHref + "/read?view=single&pageNum=" + sms_currentPage + "&sms_id=" + _sms_id;
+			itemStr = "<td class=sms-status-img><span class=readImg></span></td>";
+			itemStr += "<td><a href="+href+">" + _sms_number + "</a></td>";
+			itemStr += "<td><a href="+href+">" + _sms_time + "</a></td>";
+			itemStr += "<td class=sms-con><a href="+href+">" + _sms_content + "</a></td>";
+			itemStr += "<td class=text-center><input name=tdunread type=checkbox value="+_sms_id+" /></td>";
+			itemTable.append("<tr class='"+isRead+"'>" + itemStr + "</tr>");
+			break;
+		case "sent":
+			var href = baseHref + "/new?list=sent&pageNum=" + sms_currentPage + "&doAction=edit&sms_id=" + _sms_id;
+			itemStr += "<td><a href="+href+">" + _sms_number + "</td>";
+			itemStr += "<td class=sms-con><a href="+href+">" + _sms_content + "</a></td>";
+			itemStr += "<td class=text-center><input name=tdunread type=checkbox value="+_sms_id+" /></td>";
+			itemTable.append("<tr >" + itemStr + "</tr>");
+			break;
+		case "draft":
+			var href = baseHref + "/new?list=draft&pageNum=" + sms_currentPage + "&doAction=edit&sms_id=" + _sms_id;
+			itemStr += "<td><a href="+href+">" + _sms_number + "</td>";
+			itemStr += "<td class=sms-con><a href="+href+">" + _sms_content + "</a></td>";
+			itemStr += "<td class=text-center><input name=tdunread type=checkbox value="+_sms_id+" /></td>";
+			itemTable.append("<tr >" + itemStr + "</tr>");
+			break;
+		default:
+		}
+	}
+
+	/* list---show---end */
+
+	/* single---show---start */
+	function initShowSingle()
+	{
+		var currSmsId = parseInt(getUrlPara("sms_id"));
+		var singleSms, smsTime, smsId, smsNumber, smsContent;
+
+		sms_currentPage = parseInt(getUrlPara("pageNum"));
+
+		singleSms = getUniqueSMS(currSmsId, transCurrListType, sms_currentPage); //SDK.SMS.getSingleSMS(currSmsId);
+		if (singleSms != null && !singleSms.hasOwnProperty("error"))
+		{
+			smsTime = calcTime(singleSms.Time);
+			smsId = singleSms.Id;
+			smsNumber = singleSms.Number;
+			smsContent = singleSms.Content;
+		}
+
+		$("#phoneNumbers").val(smsNumber);
+		$(".sms-read-date-span").html(smsTime);
+		$("#messageContent").html(smsContent);
+
+		var mod_state_result = SDK.SMS.ModifySmsReadStatus(currSmsId, SMS_Status_Read);
+
+		$("#re_btnBack").click(function()
+		{
+			changePage(sms_currentPage);
+		});
+		$("#re_btnReply").click(function()
+		{
+			url = baseHref + "/new?list=" + sms_currListType + "&doAction=reply" + "&pageNum=" + sms_currentPage + "&sms_id=" + smsId;
+			location.href = url;
+		});
+		$("#re_btnForward").click(function()
+		{
+			url = baseHref + "/new?list=" + sms_currListType + "&doAction=forward" + "&pageNum=" + sms_currentPage + "&sms_id=" + smsId;
+			location.href = url;
+		});
+		$("#re_btnDelete").click(function()
+		{
+			deleteEvent(smsId);
+		});
+	}
+
+	/* single---show---end */
+
+	/* Util---function---start */
+	function getCurrentPage()
+	{
+		var curPage = 1;
+		var pageNum = parseInt(getUrlPara("pageNum"));
+		if (pageNum != "" && pageNum != null && pageNum <= sms_totalPage)
+		{
+			curPage = pageNum;
+		} else if (pageNum > sms_totalPage)
+		{
+			curPage = sms_totalPage;
+		}
+		return curPage;
+	}
+
+	function getTotalPage(total_count)
+	{
+		var totalPage = 1;
+		if (total_count < SMS_Paging_Count)
+		{
+			return totalPage;
+		} else
+		{
+			totalPage = Math.ceil(total_count / SMS_Paging_Count);
+		}
+		return totalPage;
+
+	}
+
+	function listenMark()
+	{
+		var $ckbSms = $("input[name='tdunread']");
+		var ckbSmsLeng = $ckbSms.length;
+		var $ckbSmaChecked = $("input[name='tdunread']:checked");
+		var ckbSmaCheckedLeng = $ckbSmaChecked.length;
+		var $ckbSelectAllSms = $("input[name='ckbAllSms']");
+		if (ckbSmsLeng > 0 && ckbSmaCheckedLeng == ckbSmsLeng)
+		{
+			$ckbSelectAllSms.attr("checked", true);
+		} else
+		{
+			$ckbSelectAllSms.attr("checked", false);
+		}
+
+		if (ckbSmaCheckedLeng == 0)
+		{
+			$("#btnDelete").setBtnDisabled();
+		} else
+		{
+			$("#btnDelete").removeBtnDisabled();
+		}
+	}
+
+	function showSelectPage(num, curPage)
+	{
+		var i;
+		var str = "";
+		for (i = 1; i <= num; i++)
+		{
+			str += "<option value=" + i + ">" + i + "</option>";
+		}
+		$("#pageNum").html(str).val(curPage);
+	}
+
+	function switchPage(operation)
+	{
+		var switchNum = 1;
+		var currentPage = $.trim($("#spanPageNum").html());
+		if ("next" == operation)
+		{
+			switchNum = parseInt(currentPage) + 1;
+		} else if ("previous" == operation)
+		{
+			switchNum = parseInt(currentPage) - 1;
+		}
+		if (switchNum < 0)
+		{
+			switchNum = 1;
+		} else if (switchNum > sms_totalPage)
+		{
+			switchNum = sms_totalPage;
+		}
+		changePage(switchNum);
+
+	}
+
+	function changePage(num)
+	{
+		url = baseHref + "/" + sms_currListType + "?pageNum=" + num;
+		location.href = url;
+	}
+
+	function deletePageEvent()
+	{
+		sys.confirm("<%:ids_sms_deleteSmsPrompt%>", function()
+		{
+			var checkboxArray = $("input[name='tdunread']");
+			var resultNum = 0;
+			if (checkboxArray != null && checkboxArray.length > 0)
+			{
+				$("#btnRefresh,#btnDelete").setBtnDisabled();
+				$("input[name='tdunread']:checked").each(function()
+				{
+					var result = SDK.SMS.DeleteSms($(this).val());
+					if (result == API_RESULT_SUCCESS)
+					{
+						resultNum++;
+					}
+				});
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					location.href = baseHref_all;
+				});
+			} else
+			{
+				sys.alert("<%:ids_sms_selectSmsPrompt%>");
+			}
+		});
+	}
+
+	function deleteEvent(smsId)
+	{
+		sys.confirm("<%:ids_sms_deleteSmsPrompt%>", function()
+		{
+			$("#re_btnBack,#re_btnReply,#re_btnForward,#re_btnDelete").setBtnDisabled();
+			var result = SDK.SMS.DeleteSms(smsId);
+			
+			if (result.error == API_RESULT_SUCCESS)
+			{
+				sys.alert("<%:ids_succeeded%>", function()
+				{
+					changePage(sms_currentPage);
+				});
+			}else{
+				sys.alert("<%:ids_failed%>", function()
+				{
+					changePage(sms_currentPage);
+				});
+			}
+		});
+	}
+
+	function getTransCurrListType()
+	{
+		switch (sms_currListType)
+		{
+		case "read":
+			transCurrListType = 0;
+			break;
+		case "sent":
+			transCurrListType = 1;
+			break;
+		case "draft":
+			transCurrListType = 2;
+			break;
+		default:
+			transCurrListType = 0;
+		}
+	}
+
+	function startInit()
+	{
+		if (!(!($.browser.msie && ($.browser.version == "6.0") && !$.support.style)))
+		{
+			$("#mask,#loading").css({
+				height : $("#wrap").height()
+			});
+		}
+		$("#mask,#loading").css({
+			display : "block"
+		});
+		$("#mask").css({
+			opacity : 0.01
+		});
+
+	}
+	function endInit()
+	{
+		$("#mask,#loading").css("display", "none");
+	}
+	function calcTime(utcTime) 
+	{
+		if (utcTime == "" || utcTime == null)
+		{
+			return "";
+		}
+		utcTime = utcTime.replace(/-/g,"/");
+		var utc= new Date(utcTime);
+		var timeZone =  new Date().getTimezoneOffset()/60*-1;
+		//nd = new Date(utc + (3600000*offset));
+		return show_SD_time(utc.getTime() + (3600000*timeZone));
+	}
+ 	function show_SD_time(sms_time)
+	{
+        var time_i = parseInt(sms_time);
+        var all_time_space = new Date(time_i);
+        var nowDateTime = new Date(parseInt((all_time_space.getTime())));
+        var year = nowDateTime.getFullYear();
+        var month = nowDateTime.getMonth() + 1;
+        var day = nowDateTime.getDate();
+        var hours = nowDateTime.getHours();
+        var minutes = nowDateTime.getMinutes();
+        var secs = nowDateTime.getSeconds();
+        var str = "";  
+        str += year + "-";
+        str += ((month < 10) ? "0" : "") + month + "-";
+        str += ((day < 10) ? "0" : "") + day + " ";    
+        str += ((hours < 10) ? "0" : "") + hours + ":";
+        str += ((minutes < 10) ? "0" : "") + minutes + ":";
+        str += ((secs < 10) ? "0" : "") + secs;
+        return str; 
+	}
+
+	/* Util---function---end */
+</script>
+
+<div class="main-box border-notop form-horizontal">
+	<!-- simcard status -->
+	<div id="text_show_box" style="display: none"></div>
+	<!-- Page SMS List -->
+	<% if (view == nil)or(view == "list") then %>
+	<div id="sms_list_map" style="display: none">
+		<p>
+			<%:ids_sms_deviceStorageStatus%>:<span id="deviceCurrSmsCount"></span>/<span id="deviceTotalSmsCount"></span>&nbsp;&nbsp;&nbsp;&nbsp;
+			<%:ids_sms_simStorageStatus%>:<span id="simCurrSmsCount"></span>/<span id="simTotalSmsCount"></span>
+		</p>
+		<% if list == "sent" then %>
+		<fieldset class="cbi-section">
+			<table class="table table-bordered smsTable table-striped table-hover" style="width:100%">
+				<tr>
+					<th width="25%" class="text-left"><%:ids_number%></th>
+					<th width="65%" class="text-left"><%:ids_sms_content%></th>
+					<th width="10%" class="text-center"><input type="checkbox" name="ckbAllSms" /></th>
+				</tr>
+			</table>
+		</fieldset>
+		<% elseif list == "draft" then %>
+		<fieldset class="cbi-section">
+			<table class="table table-bordered smsTable table-striped table-hover">
+				<tr>
+					<th width="25%" class="text-left"><%:ids_number%></th>
+					<th width="65%" class="text-left"><%:ids_sms_content%></th>
+					<th width="10%" class="text-center"><input type="checkbox" name="ckbAllSms" /></th>
+				</tr>
+			</table>
+		</fieldset>
+
+		<% else %>
+		<fieldset class="cbi-section">
+			<table class="table table-bordered smsTable table-striped table-hover">
+				<tr>
+					<th width="9%" class="text-left"><%:ids_state%></th>
+					<th width="18%" class="text-left"><%:ids_number%></th>
+					<th width="20%" class="text-left"><%:ids_date%></th>
+					<th width="43%" class="text-left"><%:ids_sms_content%></th>
+					<th width="10%" class="text-center"><input type="checkbox" name="ckbAllSms" /></th>
+				</tr>
+			</table>
+		</fieldset>
+		<%end%>
+		<div class="text-right">
+			<%:ids_page%>:&nbsp;<span id="listPage"></span>&nbsp;&nbsp; <span id="btnPrev"> <img src="/luci-static/bootstrap/images/page_previous.png">
+			</span> &nbsp;<span id="spanPageNum"></span>&nbsp; <span id="btnNext"> <img src="/luci-static/bootstrap/images/page_next.png">
+			</span>&nbsp;&nbsp; <span> <select id="pageNum" name="pageNum" style="width:60px;"></select>
+			</span>
+		</div>
+		<div class="text-center">
+			<button class="btn btn-primary" id="btnRefresh"><%:ids_refresh%></button>
+			<button class="btn btn-primary" id="btnDelete"><%:ids_delete%></button>
+		</div>
+	</div>
+
+	<!-- Read SMS -->
+	<% else %>
+
+	<div id="read_sms_map" style="display: none">
+		<!-- <div class="cbi-map-descr read-sms-title"><%:Read SMS%></div> -->
+		<div class="control-group pt20">
+			<label class="control-label" for=""><%:ids_sms_titleMobileNumber%>:</label>
+			<div class="controls">
+				<input type="text" id="phoneNumbers" size="30" value="">
+			</div>
+		</div>
+		<div class="control-group">
+			<label class="control-label" for=""><%:ids_date%>:</label>
+			<div class="controls">
+				<span class="sms-read-date-span"></span>
+			</div>
+		</div>
+		<div class="control-group" id="">
+			<label class="control-label" for=""><%:ids_sms_titleSms%>:</label>
+			<div class="controls">
+				<textarea id="messageContent" style="width:73%" class="cbi-input-textarea" readOnly="true" rows="10"></textarea>
+			</div>
+		</div>
+		<div class="text-center">
+			<button class="btn btn-primary" id="re_btnBack"><%:ids_back%></button>
+			<button class="btn btn-primary" id="re_btnReply"><%:ids_sms_buttonReply%></button>
+			<button class="btn btn-primary" id="re_btnForward"><%:ids_sms_buttonForward%></button>
+			<button class="btn btn-primary" id="re_btnDelete"><%:ids_delete%></button>
+		</div>
+	</div>
+</div>
+<% end %>
+<div id="mask">
+	<iframe id="maskIframe"></iframe>
+</div>
+<div id="loading"></div>
+<%+footer%>

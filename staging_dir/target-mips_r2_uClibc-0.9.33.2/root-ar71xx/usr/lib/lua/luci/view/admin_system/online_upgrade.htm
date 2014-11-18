@@ -1,0 +1,131 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+var SDK_UPDATE_NSTEP_UPDATE_COMPLETED = -1;
+var SDK_UPDATE_NSTEP_CHECK_VERSION_INFO_PHASE = 0;
+var SDK_UPDATE_NSTEP_DOWNLOAD_FIRMWARE_PHASE = 1;
+var SDK_UPDATE_NSTEP_FOTA_PROCESS = 2;
+
+
+function uiPageInit(){
+
+}
+
+function uiCheckOnlineUpdate(){
+	if(SDK.WanConnection.GetConnectionState().ConnectionStatus != G_SDK_NETWORK_CONNCTION_CONNECTED){
+		sys.alert("<%:Unable to connect to the internet.%>");
+		return;
+	}
+	var checkResult = SDK.Update.StartFOTAUpgradeOneStep();
+	if(!checkResult.hasOwnProperty("error") || 
+		(checkResult.hasOwnProperty("error") && checkResult.error.code == 220802)){
+		uiShowFOTAUpgradeState();
+	}else{
+		sys.alert("<%:Start Fota upgrade failed.%>",function(){
+			uiPageInit();
+		});
+	}
+}
+
+function uiShowFOTAUpgradeState(){
+	
+	var stateInfo = SDK.Update.GetFOTAUpgradeState();
+	if(stateInfo.hasOwnProperty("result")){
+		var result = stateInfo.result;
+		var nStep = result.nStep;
+		var nStatus = result.nStatus;
+		switch(nStep){
+			case SDK_UPDATE_NSTEP_CHECK_VERSION_INFO_PHASE:
+				if(nStatus == 1 || nStatus == -1 ){
+					sys.prompt("<%:Checking...%>",-1);
+					startGetFOTAUpgradeState();
+				}else{
+					sys.alert("<%:Check new version failed.%>",function(){
+						uiPageInit();
+					})
+				}
+				break;
+			case SDK_UPDATE_NSTEP_DOWNLOAD_FIRMWARE_PHASE:
+				if(nStatus>=0 && nStatus<=100){
+					sys.prompt("<%:Downloading...%>",-1);
+					startGetFOTAUpgradeState();
+				}else{
+					sys.alert("<%:Download software failed.%>",function(){
+						uiPageInit();
+					})
+				}
+				break;
+			case SDK_UPDATE_NSTEP_FOTA_PROCESS:
+				switch(nStatus){
+					case 0:
+						sys.alert("<%:Your software is up to date.%>",function(){
+							uiPageInit();
+						})
+						break;
+					case 1:
+						sys.prompt("<%:Downloading...%>",-1);
+						startGetFOTAUpgradeState();
+						break;
+					case 2:
+						sys.prompt("<%:Download completed.%>",-1);
+						startGetFOTAUpgradeState();
+						break;
+					case 3:
+						sys.prompt("<%:updating...%>",-1);
+						SDK.Services.RestartService();
+						startGetFOTAUpgradeState();
+						break;
+				}
+				break;
+			case SDK_UPDATE_NSTEP_UPDATE_COMPLETED:
+				if(nStatus == -1){
+					sys.alert("<%:Online upgrade completed.%>",function(){
+						uiPageInit();
+					})
+				}else{
+					sys.prompt("<%:updating...%>",-1);
+				}
+				
+				break;
+			default:
+				sys.alert("<%:Online upgrade failed.%>",function(){
+					uiPageInit();
+				})
+		}
+	}else{
+		sys.alert("<%:Online upgrade failed.%>",function(){
+			uiPageInit();
+		})
+	}
+}
+
+function startGetFOTAUpgradeState(){
+	setTimeout(function(){
+		uiShowFOTAUpgradeState();
+	},3000);
+}
+
+</script>
+<style>
+	
+</style>
+<div class="main-box border-all">
+	<fieldset class="cbi-section pt20">
+		<div id="check-box">
+			<div class="text-center pt100">
+				<%:Click to check whether there is a new version for the device.%>
+			</div>
+			<div class="text-center pt20">
+	    	    <button class="btn btn-primary" onclick="uiCheckOnlineUpdate()"><%:Check%></button>
+	    	</div>
+	    </div>
+    	<div class="text-left pt100" style="width:700px;margin:0 auto;color:red;">
+			<%:Note: The router will be restarted after an upgrade. Do not power off the router during the upgrade.            In the crucial stage of an upgrade, all indicators except POWER on the router panel blink       
+            simultaneously. At this time, do not power off the router. Otherwise, it may be severely damaged.
+%>
+		</div>
+	</fieldset>
+</div>
+<%+footer%>

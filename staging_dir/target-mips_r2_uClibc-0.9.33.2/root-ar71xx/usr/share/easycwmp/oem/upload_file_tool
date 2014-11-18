@@ -1,0 +1,20 @@
+#!/bin/sh
+# usage
+# upload_file_tool <uploadfile> <filesize> <resultfile> <interface> <dscp> <priority> <postfile> <url>
+
+/usr/sbin/createfile $1 $2 1>/dev/null 2>&1
+
+if [ ! -e $1 ];then
+	uci set easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+	uci commit easycwmp
+	exit 1
+else
+	local size=`ls -l $1|awk '{print $5}'`
+	if [ $size != $2 ]; then
+		uci set easycwmp.@UploadDiagnostics[0].DiagnosticsState="None"
+		uci commit easycwmp
+		exit 1
+	fi
+fi
+
+/usr/bin/wget --diagnosticsfile $3 -t 1 --device $4 --DSCP $5 --priority $6 --post-file $7 $8 2>/dev/null

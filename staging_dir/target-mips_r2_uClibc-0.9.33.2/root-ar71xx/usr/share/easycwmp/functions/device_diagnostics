@@ -1,0 +1,503 @@
+#!/bin/sh
+# Copyright (C) 2012-2014 PIVA Software <www.pivasoftware.com>
+# 	Author: MOHAMED Kallel <mohamed.kallel@pivasoftware.com>
+# 	Author: AHMED Zribi <ahmed.zribi@pivasoftware.com>
+# Copyright (C) 2011-2012 Luka Perkov <freecwmp@lukaperkov.net>
+
+get_device_diagnostics_device_name() {
+	local nl=""
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.DeviceName"
+	local permissions="0"
+	
+	case "$action" in
+		get_value)		
+		val=`$UCI_GET webs_cfg.system.DeviceName 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_device_version() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.SoftwareVersion"
+	local permissions="0"
+	
+	case "$action" in
+		get_value)		
+		val=`$UCI_GET webs_cfg.system.SwVersion 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0	
+}
+
+get_device_diagnostics_module_extversion() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.ModuleVersion"
+	local permissions="0"
+	
+	case "$action" in
+	 get_vale)
+	 local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetSystemInfo`
+	 local errorval=`echo ${temp%%;*}`
+	 if [ "Error=0" = ${errorval} ];then
+	 local tempval=`echo ${temp#*MODULEEXTVERSION=}`
+	 val=`echo ${tempval%%;*}`
+	 fi
+	 ;;
+	 get_name)
+	 [ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	 ;;
+	 get_notification)
+	 easycwmp_get_parameter_notification "val" "$param"
+	 ;;
+	 esac
+	 easycwmp_output "$param" "$val" "$permissions"
+	 return 0
+}
+
+get_device_diagnostics_pin_status() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.SimStatus"
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetPinStatusInfo`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=1" = ${errorval} ]; then				
+			val=`echo ${tempval%%;*}`
+		else
+			local tempval=`echo ${temp#*SIMSTATUS=}`
+			val=`echo ${tempval%%;*}`
+		fi
+		;;
+		get_name)
+		[ "$n1" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"	
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_network_select_mode() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.NetworkSelection"
+	local permissions="0"
+	
+	case "$action" in
+	get_value)
+	local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSettings`	
+	local errorval=`echo ${temp%%;*}`
+	if [ "Error=0" = ${errorval} ]; then
+		local tempval=`echo ${temp#*NETWORKSELECTIONMODEM=}`
+		val=`echo ${tempval%%;*}`
+	fi
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$param"
+	;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_network_mode() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.NetworkMode"
+	local permissions="0"
+	
+	case "$action" in
+	get_value)
+	local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSettings`
+	local errorval=`echo ${temp%%;*}`
+		
+	if [ "Error=0" = ${errorval} ]; then
+		local tempval=`echo ${temp#*NetworkModem=}`
+		val=`echo ${tempval%%;*}`
+	fi
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$param"
+	;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_cellid()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.CellID"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkLacCellId`
+		local CellId=""
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" = ${errorval} ]; then
+			local tempval=`echo ${temp#*CELLID=}`
+		  CellId=`echo ${tempval%%;*}`
+		  val="$CellId"		
+		fi 		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_signalstrength() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.SignalStrength"	
+	local permissions="0"
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo`		
+		local SignalStrength=""
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" = ${errorval} ]; then
+			local tempval=`echo ${temp#*SIGNALSTRENGTH=}`
+			SignalStrength=`echo ${tempval%%;*}`
+			val="$SignalStrength"
+		fi		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_roam_state() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.RoamState"
+	local permissions="0"
+	case	"$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo`
+		local RoamState=""
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" = ${errorval} ];then
+			local tempval=`echo ${temp#*ROAMSTATUS=}`
+			RoamState=`echo ${tempval%%;*}`
+			val="$RoamState"
+		fi
+		;;
+		get_name)
+		[	"$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_network_type() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.NetworkType"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" = ${errorval} ];then
+		local tempval=`echo ${temp#*NETWORKTYPE=}`
+		val=`echo ${tempval%%;*}`
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_network_name() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.NetworkName"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" = ${errorval} ];then
+		local tempval=`echo ${temp#*NetworkName=}`
+		val=`echo ${tempval%%;*}`
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_plmn() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.PLMN"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo`		
+		local errorval=`echo ${temp%%;*}`		
+		if [ "Error=0" = ${errorval} ];then
+		local tempval=`echo ${temp#*PLMN=}`
+		val=`echo ${tempval%%;*}`
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_device_diagnostics_imei() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.DiagnosticsInfo.IMEI"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetSystemInfo`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" = ${errorval} ];then
+		local tempval=`echo ${temp#*IMEI=}`
+		val=`echo ${tempval%%;*}`
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+get_device_diagnostics_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.DiagnosticsInfo." "" "0"
+	;;
+esac
+}
+get_device_diagnostics() {
+case "$1" in
+	InternetGatewayDevice.)
+	get_device_diagnostics_object 0
+	get_device_diagnostics_device_name "$2"
+	get_device_diagnostics_device_version "$2"
+	get_device_diagnostics_module_extversion "$2"
+	get_device_diagnostics_imei "$2"
+	get_device_diagnostics_pin_status "$2"
+	get_device_diagnostics_plmn "$2"
+	get_device_diagnostics_network_type "$2"
+	get_device_diagnostics_network_select_mode "$2"	
+	get_device_diagnostics_network_mode "$2"
+	get_device_diagnostics_signalstrength "$2"
+	get_device_diagnostics_network_name "$2"
+	get_device_diagnostics_cellid "$2"	
+	get_device_diagnostics_roam_state "$2"
+		
+	return 0
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.)
+	get_device_diagnostics_object "$2"
+	get_device_diagnostics_device_name 0
+	get_device_diagnostics_device_version 0
+	get_device_diagnostics_module_extversion 0
+	get_device_diagnostics_imei 0
+	get_device_diagnostics_pin_status 0
+	get_device_diagnostics_plmn 0
+	get_device_diagnostics_network_type 0
+	get_device_diagnostics_network_select_mode 0
+	get_device_diagnostics_network_mode 0
+	get_device_diagnostics_signalstrength 0
+	get_device_diagnostics_network_name 0
+	get_device_diagnostics_cellid 0	
+	get_device_diagnostics_roam_state 0	
+	return 0
+	;;	
+	InternetGatewayDevice.DiagnosticsInfo.DeviceName)
+	get_device_diagnostics_device_name 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.SoftwareVersion)
+	get_device_diagnostics_device_version 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.ModuleVersion)
+	get_device_diagnostics_module_extversion 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.IMEI)
+	get_device_diagnostics_imei 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.SimStatus)
+	get_device_diagnostics_pin_status 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.PLMN)
+	get_device_diagnostics_plmn 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkType)
+	get_device_diagnostics_network_type 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkSelection)
+	get_device_diagnostics_network_select_mode 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkMode)
+	get_device_diagnostics_network_mode 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.SignalStrength)
+	get_device_diagnostics_signalstrength 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkName)
+	get_device_diagnostics_network_name 0
+	return $?
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.CellID)
+	get_device_diagnostics_cellid 0
+	return $?
+	;;	
+	InternetGatewayDevice.DiagnosticsInfo.RoamState)
+	get_device_diagnostics_roam_state 0
+	return $?
+	;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_device_diagnostics() {
+local fcode
+case "$action" in
+	set_value)
+	fcode=$E_NON_WRITABLE_PARAMETER
+	;;
+	set_notification)
+	fcode=$E_NOTIFICATION_REJECTED
+	;;
+esac
+
+case "$1" in
+  InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;	
+	InternetGatewayDevice.DiagnosticsInfo.DeviceName)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.SoftwareVersion)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.ModuleVersion)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.IMEI)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.SimStatus)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.PLMN)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkType)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkSelection)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkMode)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.SignalStrength)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.NetworkName)
+	return $fcode
+	;;
+	InternetGatewayDevice.DiagnosticsInfo.CellID)
+	return $fcode
+	;;	
+	InternetGatewayDevice.DiagnosticsInfo.RoamState)
+	return $fcode
+	;;
+	esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_device_diagnostics() { return 0; }
+
+add_object_device_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_device_diagnostics() { return $E_INVALID_PARAMETER_NAME; }

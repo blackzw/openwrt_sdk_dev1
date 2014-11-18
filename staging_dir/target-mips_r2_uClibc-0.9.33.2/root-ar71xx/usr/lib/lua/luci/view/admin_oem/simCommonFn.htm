@@ -1,0 +1,96 @@
+﻿var simUiFn = {
+	getSimStatus:function(simState){
+		var simStateStr = "<%:ids_sim_unknownSim%>";
+		switch(simState){
+			case G_SDK_SIM_STATE_NO_SIM:
+				simStateStr = "<%:ids_sim_noSimCard%>";
+				break;
+			case G_SDK_SIM_STATE_PIN:
+				simStateStr = "<%:ids_sim_requirePin%>";
+				break;
+			case G_SDK_SIM_STATE_PUK:
+				simStateStr = "<%:ids_sim_requirePuk%>";
+				break;
+			case G_SDK_SIM_STATE_READY:
+				simStateStr = "<%:ids_sim_simReady%>";
+				break;
+			case G_SDK_SIM_STATE_INVALID:
+				simStateStr = "<%:ids_sim_invalidSim%>";
+				break;
+			case G_SDK_SIM_STATE_SIMLOCK:
+				simStateStr = "<%:ids_sim_simlock%>";
+				break;
+			default:
+				simStateStr = "<%:ids_sim_unknownSim%>";
+		}
+		return simStateStr;
+	},
+
+	getSimLockState:function(SimlockState){
+		var simlockState = G_SDK_SIMLOCK_NO;
+		switch(parseInt(SimlockState)){
+			case -1:
+				simlockState = G_SDK_SIMLOCK_NO;
+				break;
+			case 0:
+				simlockState = G_SDK_SIMLOCK_NCK;
+				break;
+			case 1:
+				simlockState = G_SDK_SIMLOCK_NSCK;
+				break;
+			case 2:
+				simlockState = G_SDK_SIMLOCK_SPCK;
+				break;
+			case 3:
+				simlockState = G_SDK_SIMLOCK_CCK;
+				break;
+			case 4:
+				simlockState = G_SDK_SIMLOCK_PCK;
+				break;
+			case 15:
+			case 16:
+			case 17:
+			case 18:
+			case 19:
+				simlockState = G_SDK_SIMLOCK_RCK;
+				break;
+			case 30:
+				simlockState = G_SDK_SIMLOCK_RCK_FORBID;
+				break;
+		}
+		return simlockState;
+	},
+
+	getSimlockStateString: function(simlockState){
+		var simlockStateString = "<%:ids_sim_simlockForbidden%>";
+		switch(parseInt(simlockState)){
+			case G_SDK_SIMLOCK_NO:
+				simlockStateString = "<%:ids_sim_noSimlock%>";;
+				break;
+			case G_SDK_SIMLOCK_NCK:
+				simlockStateString = "NCK";
+				break;
+			case G_SDK_SIMLOCK_NSCK:
+				simlockStateString = "NSCK";
+				break;
+			case G_SDK_SIMLOCK_SPCK:
+				simlockStateString = "SPCK";
+				break;
+			case G_SDK_SIMLOCK_CCK:
+				simlockStateString = "CCK";
+				break;
+			case G_SDK_SIMLOCK_PCK:
+				simlockStateString = "PCK";
+				break;
+			case G_SDK_SIMLOCK_RCK:
+				simlockStateString = "RCK";
+				break;
+			case G_SDK_SIMLOCK_RCK_FORBID:
+				simlockStateString = "<%:ids_sim_simlockForbidden%>";
+				break;
+			default:
+				simlockStateString = "<%:ids_error%>";
+		}
+		return simlockStateString;
+	}
+}

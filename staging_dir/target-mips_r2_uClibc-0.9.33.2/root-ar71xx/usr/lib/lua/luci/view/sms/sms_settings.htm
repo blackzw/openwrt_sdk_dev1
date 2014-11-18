@@ -1,0 +1,74 @@
+<%#
+LuCI - Lua Configuration Interface
+Copyright 2008-2009 Steven Barth <steven@midlink.org>
+Copyright 2008-2011 Jo-Philipp Wich <xm@subsignal.org>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+$Id: iptables.htm 6827 2011-01-29 22:50:13Z jow $
+
+-%>
+
+<%+header%>
+
+<style type="text/css">
+	span:target {
+		color: blue;
+		text-decoration: underline;
+	}
+	.cbi-map-descr {
+		padding-bottom: 20px;
+		padding-left: 60px;
+		padding-top: 25px;
+	}
+</style>
+
+<form method="post" action="<%=REQUEST_URI%>">
+<h2><a id="content" name="content"><%:Services-SMS-Settings%></a></h2>
+<div class="cbi-map">
+<ul class="tabs">
+	<li class="tabmenu-item-new"><a href="<%=luci.dispatcher.build_url("admin/services/sms/new")%>">New</a></li>	
+	<li class="tabmenu-item-read"><a href="<%=luci.dispatcher.build_url("admin/services/sms")%>?list=read">Read</a></li>
+	<li class="tabmenu-item-sent"><a href="<%=luci.dispatcher.build_url("admin/services/sms")%>?list=sent">Sent</a></li>
+	<li class="tabmenu-item-draft"><a href="<%=luci.dispatcher.build_url("admin/services/sms")%>?list=draft">Draft</a></li>
+	<li class="tabmenu-item-sms_setting active"><a href="#">SMS Settings</a></li>
+</ul>
+
+
+<fieldset class="cbi-section">
+		<div class="cbi-map-descr">
+			<strong></strong>
+		In this page, you can set up the SMSC(Short Message Service Center) number. 	<br>	
+		The first character should be "+" or a digit, and the following must be digits only.<br>
+		It cannot be empty or contains more than 20 digits.	<br/>
+		</div>
+			<fieldset class="cbi-section-node">
+				<div class="cbi-value">
+					<label class="cbi-value-title">SMSC:</label>
+					<div class="cbi-value-field">
+						<input type="text" name="" size="30" value="+86138007550553" />
+					</div>
+				</div>
+				<div id="" class="cbi-value cbi-value-last">
+					<label class="cbi-value-title" for="">Save Mode: </label>
+					<div class="cbi-value-field">
+						<select id="" class="cbi-input-select" size="1" name="" onchange="">
+							<option id="" value="Device">Device</option>
+							<option id="" value="Sim Card">Sim Card</option>
+						</select>
+					</div>
+				</div>
+				<div class="cbi-page-actions">
+					<input class="cbi-button cbi-button-save" type="submit" value="Apply">
+					<input class="cbi-button cbi-button-reset" type="reset" value="Cancer">
+				</div>
+				</fieldset>
+		</fieldset>
+
+</div>
+</form>
+<%+footer%>

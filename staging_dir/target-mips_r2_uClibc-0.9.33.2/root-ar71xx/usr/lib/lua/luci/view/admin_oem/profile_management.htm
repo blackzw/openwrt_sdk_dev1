@@ -1,0 +1,347 @@
+<%+header%>
+
+<script type="text/javascript">
+var PROFILE_OPERATE_NEW = 1;
+var PROFILE_OPERATE_EDIT = 0;
+var PROFILE_USER_LEN = 15;
+var PROFILE_TYPE_USER_DEFINE = 0;
+var PROFILE_TYPE_BUILD_IN = 1;
+var DEFUALT_PROFILE_VALUE=1;
+
+var GetConnectionState = SDK.WanConnection.GetConnectionState();
+var wanState = GetConnectionState.ConnectionStatus;
+var profile_list = SDK.Profile.GetProfileList();
+var userDefineProfileLen=getUserDefineLen(profile_list);
+var curprofile_operate = null;
+var connect_profile =GetConnectionState.ConnectProfile;
+var selProfileNameId="#selProfileName";
+
+var userDefineProfileNameArray=[];
+
+$(function($){
+    showlist(wanState);
+    $("#btnProfileSetDefault").click(setDefaultEvent);
+    $("#btnProfileEdit").click(function(){
+    	editProfile($(selProfileNameId).val());
+    });
+    $("#btnProfileDelete").click(deleteProfile);
+    $("#btnProfileNew").click(function(){
+    	removeRuleText();
+    	newProfile();
+    });
+    $("#iptProfileName,#iptProfileNumber,#iptProfileUserName,#iptProfilePassword,#iptProfileApn,#selProfileAuthType").bind("input change keyup keydown paste",function(){
+        $("#btnProfileSave").removeBtnDisabled();
+    });
+    $(selProfileNameId).change(function(){
+    	removeRuleText();
+    	change($(this).val(),GetConnectionState.ConnectionStatus);
+    });
+	$("#btnProfileSave").click(function(){
+		removeRuleText();
+		saveProfile();
+	});
+})
+
+function removeRuleText(){
+	$(".iptText").removeClass("errorIpt");
+    $(".rule").remove();
+}
+
+function disableBtn(){
+	$("#btnProfileSave,#btnProfileNew,#btnProfileEdit,#btnProfileDelete,#btnProfileSetDefault").setBtnDisabled();
+}
+
+function disabledForm(val){
+	$("#iptProfileName,#iptProfileNumber,#iptProfileUserName,#iptProfilePassword,#iptProfileApn,#selProfileAuthType").attr("disabled",val);
+}
+
+
+function getUserDefineLen(list) {
+	var userDefineList = $.grep(list, function (n, i) {
+		return n.IsPredefine == PROFILE_TYPE_USER_DEFINE;
+	})
+	return userDefineList.length;
+}
+
+function showlist(wanState){
+    $(selProfileNameId).html("");	
+	var list=profile_list;
+    if(list == null || ($.isArray(list)&&list.length==0)) {
+		disabledForm(true);
+    	$("#btnProfileNew").removeBtnDisabled();
+    }else{
+    	var str="";
+    	if( list.length == undefined){
+    		disabledForm(true);
+		    disableBtn();
+		    $("#btnProfileNew").removeBtnDisabled();
+	    }else{
+	    	$.each(list,function(i,v){
+			    str+=v.Default==DEFUALT_PROFILE_VALUE?"<option selected value ="+ v.ProfileID + ">"+v.ProfileName+" (D)</option>":"<option value ="+ v.ProfileID + ">"+v.ProfileName+"</option>";
+		    })
+		    $(selProfileNameId).append(str);
+		    change($(selProfileNameId).val(),wanState)
+	    }
+		
+    }
+}
+
+function change(value,wanState){
+    var list=profile_list
+    list=$.grep(list, function(n,i){
+        return n.ProfileID==value;
+    })[0];
+    $("#btnProfileSave").setBtnDisabled();
+    $("#btnProfileNew,#btnProfileEdit,#btnProfileDelete,#btnProfileSetDefault").removeBtnDisabled();
+    if(list!=null){
+        $("#iptProfileName").val(list.ProfileName);
+        $("#iptProfileNumber").val(list.DailNumber);
+        $("#iptProfileUserName").val(list.UserName);
+        $("#iptProfilePassword").val(list.Password);
+        $("#iptProfileApn").val(list.APN);
+        $("#selProfileAuthType").val(list.AuthType);
+        if(list.Default==DEFUALT_PROFILE_VALUE){
+            $("#btnProfileSetDefault,#btnProfileDelete").setBtnDisabled();
+        }        
+        if(list.ProfileName==connect_profile&&(wanState == G_SDK_NETWORK_CONNCTION_CONNECTED|| wanState == G_SDK_NETWORK_CONNCTION_CONNECTING || wanState == G_SDK_NETWORK_CONNCTION_DISCONNECTING)){
+            $("#btnProfileEdit,#btnProfileDelete").setBtnDisabled();
+        }
+		if(list.IsPredefine == PROFILE_TYPE_BUILD_IN ){
+            $("#btnProfileEdit,#btnProfileDelete").setBtnDisabled();
+        }
+    }
+	disabledForm(true);
+    if(userDefineProfileLen== PROFILE_USER_LEN){
+        $("#btnProfileNew").setBtnDisabled();
+    }
+}
+
+function newProfile(){
+	disabledForm(false);
+	userDefineProfileNameArray=[];
+	$.each(profile_list,function(i,v){
+		userDefineProfileNameArray.push(v.ProfileName)
+	})
+	$("#iptProfileName,#iptProfileNumber,#iptProfileUserName,#iptProfilePassword,#iptProfileApn").val("");
+    $("#selProfileAuthType").val("0")
+    curprofile_operate = PROFILE_OPERATE_NEW;
+    $("#btnProfileSave,#btnProfileEdit,#btnProfileDelete,#btnProfileSetDefault").setBtnDisabled();
+}
+
+
+function editProfile(profileId){
+	if(profileId){
+		disabledForm(false);
+		$("#btnProfileSetDefault").setBtnDisabled();
+		curprofile_operate = PROFILE_OPERATE_EDIT;
+		var list=profile_list;
+			list=$.grep(list, function(n,i){
+				return n.ProfileID==profileId;
+			})[0];
+		userDefineProfileNameArray=[];
+		$.each(profile_list,function(i,v){
+			if(v.ProfileName!=list.ProfileName){
+				userDefineProfileNameArray.push(v.ProfileName);
+			}
+		})
+
+		if(list.Default==DEFUALT_PROFILE_VALUE){
+			$("#btnProfileDelete,#btnProfileSetDefault").setBtnDisabled();
+		}
+	}
+}
+
+function saveProfile(){
+	var $selProfileName=$(selProfileNameId);
+	var $profileName=$("#iptProfileName");
+	var $userName=$("#iptProfileUserName");
+	var $password=$("#iptProfilePassword");
+	var $number=$("#iptProfileNumber");
+	var $apn=$("#iptProfileApn");
+	var $authType=$("#selProfileAuthType");
+
+	var selProfileNameVal=parseInt($selProfileName.val());
+    var profileNameVal = $.trim($profileName.val());
+    var userNameVal=$.trim($userName.val());
+    var passwordVal=$password.val();
+    var numberVal=$.trim($number.val());
+    var apnVal=$.trim($apn.val());
+    var authTypeVal=parseInt($authType.val());
+    var validateProfile = true;
+    if(profileNameVal == ""){
+		$profileName.showRule('<%:ids_profile_nameEmptyPrompt%>');          
+        return;
+    }
+	if($.inArray(profileNameVal,userDefineProfileNameArray)!=-1){
+		$profileName.showRule('<%:ids_profile_nameRepeatPrompt%>');
+		return;
+	}
+    if(!checkProfileName(profileNameVal)){
+		$profileName.showRule('<%:ids_profile_nameInvalid%>');
+        return;
+    }
+
+    /*if ( numberVal== ""){
+		$number.showRule('<%:ids_profile_dialNumberEmptyPrompt%>');
+		return;
+	}*/
+	if(numberVal!= "" && !check_input_char(numberVal)){
+		$number.showRule('<%:ids_profile_dialNumberInvalid%>');
+		return;
+	}
+	
+	if (apnVal == ""){
+		$apn.showRule('<%:ids_profile_apnEmptyPrompt%>');
+		return;
+	}
+
+	if(apnVal!= "" && !check_input_char(apnVal)){
+		$apn.showRule('<%:ids_profile_apnInvalid%>');
+		return;
+	}
+
+    if( userNameVal != "" && !check_input_char(userNameVal) ){
+		$userName.showRule('<%:ids_profile_userNameInvalid%>');
+		return;
+    }
+
+    if( passwordVal != "" && !check_profile_password(passwordVal)){
+		$password.showRule('<%:ids_profile_pwdInvalid%>');
+		return;
+    }
+	
+	var sendData1=PROFILE_OPERATE_NEW ==curprofile_operate?{}:{"ProfileID":selProfileNameVal}
+
+    var sendData={
+	    "AuthType":authTypeVal,
+        "APN":apnVal,
+        "Password":passwordVal,
+        "UserName":userNameVal,
+        "ProfileName":profileNameVal,
+        "DailNumber":numberVal        
+    }
+    
+	$.extend(sendData1,sendData);
+	if(curprofile_operate == PROFILE_OPERATE_NEW){
+        disableBtn();
+        var result = SDK.Profile.AddNewProfile(sendData1);
+        ShowDlgTips(result);
+    }else if(curprofile_operate == PROFILE_OPERATE_EDIT){
+    	disableBtn();
+        var result = SDK.Profile.EditProfile(sendData1);
+        ShowDlgTips(result);	
+    }else{
+    	sys.alert("<%:ids_failed%>",function(){
+			window.location.reload();
+		})
+    }
+}
+
+function deleteProfile(){
+	//disableBtn();
+	sys.confirm("<%:ids_profile_delete%>",function(){		
+		var sendData={
+			"ProfileID":$(selProfileNameId).val()
+		}
+	    var result = SDK.Profile.DeleteProfile(sendData);
+	    ShowDlgTips(result);
+	})
+}
+
+function setDefaultEvent(){
+	disableBtn();
+    var sendData={
+        "ProfileID":$(selProfileNameId).val()
+    }
+	var result = SDK.Profile.SetDefaultProfile(sendData);
+	ShowDlgTips(result);
+} 
+
+function ShowDlgTips(result){
+    switch(result.error){
+        case 0:
+            sys.alert("<%:ids_succeeded%>",function(){
+				 window.location.reload();
+			})
+            break;        
+        default:
+			sys.alert("<%:ids_failed%>",function(){
+				 window.location.reload();
+			})
+    }    
+}
+
+
+
+</script>
+<div class="main-box form form-horizontal border-notop">
+	<fieldset id="cbi-profileManagement">
+
+		<div class="control-group">
+			<label class="control-label"><%:ids_profile_pageTitle%>:</label>
+			<div class="controls">
+			    <select id="selProfileName"></select>
+			</div>
+		</div>
+
+		<div class="control-group">
+		    <label class="control-label"><%:ids_profile_name%>:</label>
+		    <div class="controls">
+		    	<input type="text" id="iptProfileName" maxlength="31">
+		    </div>
+		</div>
+
+		
+		<div class="control-group">
+			<label class="control-label"><%:ids_profile_dialNumber%>:</label>
+		    <div class="controls">
+		        <input type="text" id="iptProfileNumber" maxlength="31">
+		    </div>
+		</div>
+        
+
+		<div class="control-group">
+		    <label class="control-label"><%:ids_profile_apn%>:</label>
+		    <div class="controls">
+		    	<input type="text" id="iptProfileApn" maxlength="31">
+		    </div>
+		</div>
+
+		<div class="control-group">
+			<label class="control-label"><%:ids_profile_userName%>:</label>
+			<div class="controls">
+			    <input type="text" id="iptProfileUserName" maxlength="31">
+			</div>
+		</div>
+
+		<div class="control-group">
+		    <label class="control-label"><%:ids_profile_password%>:</label>
+		    <div class="controls">
+		    	<input type="text" id="iptProfilePassword" maxlength="31">
+		    </div>
+		</div>
+
+		<div class="control-group">
+			<label class="control-label"><%:ids_protocol%>:</label>
+			<div class="controls">
+	    		<select id="selProfileAuthType" size="1">
+	    			<option value="0"><%:None%></option>
+	    			<option value="1"><%:PAP%></option>
+	    			<option value="2"><%:CHAP%></option>
+                    <option value="3"><%:PAP&CHAP%></option>
+	    		</select>
+    	    </div>
+    	</div>
+	
+	<p class="alert alert-error span10 offset1 mt20"><%:ids_profile_Note%></p>
+	</fieldset>
+	
+    <div class="text-center">
+    	<button class="btn btn-primary" id="btnProfileNew"><%:ids_new%></button>
+		<button class="btn btn-primary" id="btnProfileEdit"><%:ids_edit%></button>
+        <button class="btn btn-primary" id="btnProfileSave"><%:ids_save%></button>
+        <button class="btn btn-primary" id="btnProfileDelete"><%:ids_delete%></button>
+        <button class="btn btn-primary" id="btnProfileSetDefault"><%:ids_profile_setDefault%></button>
+    </div>
+</div>
+<%+footer%>

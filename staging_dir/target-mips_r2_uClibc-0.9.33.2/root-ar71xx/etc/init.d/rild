@@ -1,0 +1,14 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2008-2012 OpenWrt.org
+
+START=12
+
+start() 
+{	
+	service_start /usr/bin/rild
+}
+
+stop() 
+{
+	service_stop /usr/bin/rild
+}

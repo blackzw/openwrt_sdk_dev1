@@ -1,0 +1,116 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006-2011 OpenWrt.org
+
+START=50
+
+VSFTPD_CONFIG_FILE="/etc/vsftpd.conf"
+
+vsftpd_cfg_append() {
+	echo "$1" >> "$VSFTPD_CONFIG_FILE"
+}
+
+vsftpd_cfg_addbool() {
+	local cfg="$1"
+	local key="$2"
+	local def="$3"
+	local val
+
+	config_get_bool val "$cfg" "$key" "$def"
+	[ "$val" -gt 0 ] && val="YES" || val="NO"
+	vsftpd_cfg_append "$key=$val"
+}
+
+vsftpd_cfg_addstr() {
+	local cfg="$1"
+	local key="$2"
+	local def="$3"
+	local val
+
+	config_get val "$cfg" "$key" "$def"
+	[ -n "$val" ] && vsftpd_cfg_append "$key=$val"
+}
+
+vsftpd_cfg_add_anonymous(){
+	local cfg="$1"
+	local val
+
+	config_get_bool val "$cfg" "anonymous" "0"
+	[ "$val" -gt 0 ] && val="YES" || val="NO"
+	vsftpd_cfg_append "anonymous_enable=$val"
+}
+
+vsftpd_cfg_add_root_dir(){
+	local cfg="$1"
+	local val
+	
+	config_get val "$cfg" "root_dir" "/mnt/usb"
+	if [ -n "$val" ] 
+	then
+		vsftpd_cfg_append "anon_root=$val"
+		vsftpd_cfg_append "local_root=$val"
+	fi
+}
+
+vsftpd_cfg_add_username(){
+	local cfg="$1"
+	local val
+	
+	config_get val "$cfg" "username" "admin"
+	if [ -n "$val" ] 
+	then
+		vsftpd_cfg_append "chown_username=$val"
+		vsftpd_cfg_append "ftp_username=$val"	
+	fi
+}
+
+vsftpd_cfg_add_auth_type() {
+	local val
+	local auth
+	local cfg="$1"
+	config_get_bool auth "$cfg" "auth_type" "0"
+	[ "$auth" -gt 0 ] && val="YES" || val="NO"
+	
+	vsftpd_cfg_append "write_enable=$val"
+	vsftpd_cfg_append "anon_upload_enable=$val"
+	vsftpd_cfg_append "anon_mkdir_write_enable=$val"
+	vsftpd_cfg_append "anon_other_write_enable=$val"
+}
+
+
+vsftpd_create_config() {
+	local cfg=$1	
+
+	echo "# this file is generated automatically, don't edit" > "$VSFTPD_CONFIG_FILE"
+	vsftpd_cfg_append "background=YES"
+	vsftpd_cfg_append "listen=YES"
+	vsftpd_cfg_append "local_enable=YES"
+	vsftpd_cfg_append "local_umask=022"
+	vsftpd_cfg_append "check_shell=NO"
+	vsftpd_cfg_append "session_support=NO"
+	vsftpd_cfg_append "chroot_local_user=YES"
+	vsftpd_cfg_add_anonymous $cfg
+	vsftpd_cfg_add_auth_type $cfg
+	vsftpd_cfg_add_username $cfg
+	vsftpd_cfg_add_root_dir $cfg
+
+	return 0
+}
+
+start() {
+
+	local enabled
+
+	config_load 'vsftpd'
+	config_get_bool enabled config 'enabled' '0'
+
+	[ "$enabled" -gt 0 ] || return 1
+
+	vsftpd_create_config config || return 1
+
+	mkdir -m 0755 -p /var/run/vsftpd
+	service_start /usr/sbin/vsftpd
+}
+
+stop() {
+	service_stop /usr/sbin/vsftpd
+}

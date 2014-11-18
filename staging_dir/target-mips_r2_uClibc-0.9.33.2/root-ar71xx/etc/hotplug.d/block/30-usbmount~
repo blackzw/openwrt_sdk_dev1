@@ -1,0 +1,76 @@
+#!/bin/sh
+
+case "$ACTION" in
+	add)
+		MOUNT=`mount | grep '/mnt/usb'`
+		if [ $? -eq 0 ];then
+			umount -f /mnt/usb/*
+			rmdir /mnt/usb/*
+		fi
+
+		for i in $(ls /dev/ | grep 'sd[a-z]*')
+		do
+			mkdir -p /mnt/usb/$i
+			[ ! -e /tmp/usbstorageavailable ] && touch /tmp/usbstorageavailable
+			mount -o rw,umask=000,iocharset=utf8,uid=20,gid=20 /dev/$i /mnt/usb/$i
+			if [ $? -ne 0 ];then
+				mount -o rw,umask=000,iocharset=utf8,uid=20,gid=20 /dev/$i /mnt/usb/$i
+			fi
+		done
+
+		if [ -e /tmp/usbstorageavailable ] && [ ! -e /tmp/airdiskavailable ];then
+			uci set samba.config.device_type=1
+			uci commit samba
+		fi
+
+	#	old_config=`uci show samba |grep sambashare|awk -F "=" '{print $1}'|awk -F "." '{print $2}'`
+	#	for old_val in $old_config
+	#	do
+	#		if [ "$old_val" != "airdisk" ];then
+	#			uci delete samba.${old_val}
+	#		fi
+	#	done
+	#	uci commit samba
+
+		mount_path=`mount|grep "/mnt/usb/"|awk '{print $3}'`
+		for mount_dir in $mount_path
+		do
+			dir_entry=${mount_dir##*/}
+			uci set samba.usb_${dir_entry}=sambashare
+			uci set samba.usb_${dir_entry}.name=usb_${dir_entry}
+			uci set samba.usb_${dir_entry}.path=/mnt/usb/${dir_entry}
+		done
+		uci commit samba
+		smb_enable=`uci get samba.config.enabled`
+		dlna_enable=`uci get minidlna.config.enabled`
+		ftp_enable=`uci get vsftpd.config.enabled`
+
+		[ $smb_enable -eq 1 ] && /etc/init.d/samba restart > /dev/null 2>&1
+		[ $dlna_enable -eq 1 ] && /etc/init.d/minidlna restart > /dev/null 2>&1
+		[ $ftp_enable -eq 1 ] && /etc/init.d/vsftpd restart > /dev/null 2>&1
+		;;
+
+	remove)
+		old_config=`uci show samba |grep sambashare|awk -F "=" '{print $1}'|awk -F "." '{print $2}'`
+		for old_val in $old_config
+		do
+			if [ "$old_val" != "airdisk" ];then
+				uci delete samba.${old_val}
+			fi
+		done
+		uci commit samba
+		smb_enable=`uci get samba.config.enabled`
+		dlna_enable=`uci get minidlna.config.enabled`
+		ftp_enable=`uci get vsftpd.config.enabled`
+
+		[ $smb_enable -eq 1 ] && /etc/init.d/samba stop > /dev/null 2>&1
+		[ $dlna_enable -eq 1 ] && /etc/init.d/minidlna stop > /dev/null 2>&1
+		[ $ftp_enable -eq 1 ] && /etc/init.d/vsftpd stop > /dev/null 2>&1
+		umount -f /mnt/usb/*
+		rmdir /mnt/usb/*
+		rm -f /tmp/usbstorageavailable
+		[ $smb_enable -eq 1 ] && /etc/init.d/samba start > /dev/null 2>&1
+		[ $dlna_enable -eq 1 ] && /etc/init.d/minidlna start > /dev/null 2>&1
+		[ $ftp_enable -eq 1 ] && /etc/init.d/vsftpd start > /dev/null 2>&1
+		;;
+esac

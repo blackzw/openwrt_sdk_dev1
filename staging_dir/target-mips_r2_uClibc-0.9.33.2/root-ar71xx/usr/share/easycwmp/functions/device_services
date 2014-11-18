@@ -1,0 +1,283 @@
+#!/bin/sh
+
+get_device_services_alg_sip_enable() {
+local nl="$1"
+local val=""
+local param="InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPEnable"
+local permissions="1"
+local type="xsd:boolean"
+case "$action" in
+	get_value)
+	val=`$UCI_GET alg.alg_switch.sip 2> /dev/null`
+	if [ "$val" = "0" ]; then
+		val="false"
+	else
+		val="true"
+	fi
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$param"
+	;;
+esac
+easycwmp_output "$param" "$val" "$permissions" "$type"
+return 0
+}
+
+set_device_services_alg_sip_enable(){
+	local val=$1
+	local parm="InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPEnable"	
+	case "$action" in
+		set_value)
+		case "$val" in
+			false|False|FALSE)
+			val="0"
+			;;
+			true|True|TRUE)
+			val="1"			
+			;;			
+			*)
+			return $E_INVALID_ARGUMENTS
+			;;
+		esac	
+		
+		$UCI_SET alg.alg_switch.sip="$val"
+		$UCI_COMMIT alg
+		/etc/init.d/alg restart > /dev/null 2>&1
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+
+get_device_services_alg_sip_port() {
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPPort"
+	local permissions="1"
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET alg.alg_switch.sip_port 2> /dev/null`	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_device_services_alg_sip_port(){
+	local val=$1
+	local parm="InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPPort"	
+	case "$action" in
+		set_value)
+		val=`echo $val | egrep '^[0-9]+$' 2>/dev/null`
+		if [ ! -n $val ]; then
+			return $E_INVALID_ARGUMENTS
+		else
+			$UCI_SET alg.alg_switch.sip_port="$val"
+			$UCI_COMMIT alg
+			/etc/init.d/alg restart > /dev/null 2>&1
+		fi		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+
+
+get_device_services_upnp_status() {
+local nl="$1"
+local val=""
+local param="InternetGatewayDevice.Services.X_ALU_UPNP.Status"
+local permissions="0"
+case "$action" in
+	get_value)
+	val=`$UCI_GET upnpd.config.enable_upnp 2> /dev/null`
+	if [ "$val" = "0" ]; then
+		val="Disabled"
+	else
+		val="Enabled"
+	fi
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$param"
+	;;
+esac
+easycwmp_output "$param" "$val" "$permissions"
+return 0
+}
+
+set_device_services_upnp_status(){
+	local val=$1
+	local parm="InternetGatewayDevice.Services.X_ALU_UPNP.Status"	
+	case "$action" in
+		set_value)
+		case "$val" in
+			Disabled|disabled)
+			val="0"
+			;;
+			Enabled|enabled)
+			val="1"			
+			;;			
+			*)
+			return $E_INVALID_ARGUMENTS
+			;;
+		esac	
+		
+		$UCI_SET upnpd.config.enable_upnp="$val"
+		$UCI_COMMIT upnpd
+		/etc/init.d/miniupnpd restart > /dev/null 2>&1	
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_device_services_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.Services." "" "0"
+	;;
+esac
+}
+
+get_device_services_alg_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.Services.X_ALU_ALGAbility." "" "0"
+	;;
+esac
+}
+
+get_device_services_upnp_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.Services.X_ALU_UPNP." "" "0"
+	;;
+esac
+}
+
+set_device_services_notification()
+{
+	local param="$1"
+	local val="$2"
+	easycwmp_set_parameter_notification "$param" "$val"
+	return 0
+}
+
+get_device_services() {
+case "$1" in
+	InternetGatewayDevice.)
+	get_device_services_object 0
+	get_device_services_alg_object "$2"
+	get_device_services_upnp_object "$2"
+	get_device_services_alg_sip_enable "$2"
+	get_device_services_alg_sip_port "$2"
+	get_device_services_upnp_status "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.Services.)
+	get_device_services_object "$2"
+	get_device_services_alg_object 0
+	get_device_services_upnp_object 0
+	get_device_services_alg_sip_enable "$2"
+	get_device_services_alg_sip_port "$2"
+	get_device_services_upnp_status "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.Services.X_ALU_ALGAbility.)
+	get_device_services_alg_object 0
+	get_device_services_alg_sip_enable "$2"
+	get_device_services_alg_sip_port "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Services.X_ALU_UPNP.)
+	get_device_services_upnp_object 0
+	get_device_services_upnp_status "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPEnable)
+	get_device_services_alg_sip_enable "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPPort)
+	get_device_services_alg_sip_port "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Services.X_ALU_UPNP.Status)
+	get_device_services_upnp_status "$2"
+	return $?
+	;;
+	
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_device_services() {
+local fcode
+case "$action" in
+	set_value)
+	fcode=$E_NON_WRITABLE_PARAMETER
+	;;
+	set_notification)
+	fcode=$E_NOTIFICATION_REJECTED
+	;;
+esac
+
+case "$1" in
+	InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.Services.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.Services.X_ALU_ALGAbility.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.Services.X_ALU_UPNP.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPEnable)
+	set_device_services_alg_sip_enable "$2"
+	return $?
+	;;	
+	InternetGatewayDevice.Services.X_ALU_ALGAbility.SIPPort)
+	set_device_services_alg_sip_port "$2"
+	return $?
+	;;
+	InternetGatewayDevice.Services.X_ALU_UPNP.Status)
+	set_device_services_upnp_status "$2"
+	return $?
+	;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_device_services() { return 0; }
+
+add_object_device_services() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_device_services() { return $E_INVALID_PARAMETER_NAME; }
+

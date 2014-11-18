@@ -1,0 +1,85 @@
+# This file is interpreted as shell script.
+# Put your custom iptables rules here, they will
+# be executed with each firewall (re-)start.
+#******************************************************************
+#*this script is written by ZhouPeng, it's used for add user      *
+#*settings rules when exec firewall restart, only the host name   *
+#*in dhcp.leases can be added.                                    *
+#******************************************************************
+
+#if [ ! -e /tmp/dhcp.leases ];then
+#	logger "/tmp/dhcp.leases does not exist, so there is no need to add acl rules"
+#	exit 0
+#fi
+
+. /lib/functions.sh
+
+config_load acl
+
+local listen_http
+local port
+
+listen_http=$(uci get uhttpd.main.listen_http)
+port=${listen_http#*:}
+
+local lan_ip
+lan_ip=$(uci get network.lan.ipaddr)
+
+local default_internet
+local default_storage
+
+loop_exist_hostname(){
+	local name
+	local internet
+	local storage
+	config_get name $1 name
+	
+	if [ "$name" = "default" ];then
+		config_get default_internet $1 internet
+		config_get default_storage $1 storage
+		if [ $default_internet -eq 0 ];then
+			#block the internet packet from specific host name
+			logger "iptables -t filter -I ACLINTERNET -j DROP"
+			iptables -t filter -I ACLINTERNET -j DROP
+		fi
+		if [ $default_storage -eq 0 ];then
+			#all tcp packet will be drop except the packet's port number is http_port
+			logger "iptables -t filter -I ACLSTORAGE -s $name -d $lan_ip -p tcp -m multiport ! --destination-port $port,23 DROP"
+			iptables -t filter -I ACLSTORAGE -d $lan_ip -p tcp -m multiport ! --destination-port $port,23 -j DROP
+		fi
+	fi
+
+	config_get internet $1 internet
+	config_get storage $1 storage	
+	
+	if [ -n "$(cat /tmp/dhcp.leases | grep $name)" ];then
+		if [ $default_internet -ne $internet ];then
+			if [ $internet -eq 0 ];then
+				#block the internet packet from specific host name
+				logger "iptables -t filter -I ACLINTERNET -s $name -j DROP"
+				iptables -t filter -I ACLINTERNET -s $name -j DROP
+			fi
+			if [ $internet -eq 1 ];then
+				#block the internet packet from specific host name
+				logger "iptables -t filter -I ACLINTERNET -s $name -j ACCEPT"
+				iptables -t filter -I ACLINTERNET -s $name -j ACCEPT
+				iptables -t filter -I ACLINTERNET -d $name -j ACCEPT
+			fi			
+		fi
+		if [ $default_storage -ne $storage ];then
+			if [ $storage -eq 0 ];then
+				#all tcp packet will be drop except the packet's port number is http_port and 23
+				logger "iptables -t filter -I ACLSTORAGE -s $name -d $lan_ip -p tcp -m multiport ! --destination-port $port,23 -j DROP"
+				iptables -t filter -I ACLSTORAGE -s $name -d $lan_ip -p tcp -m multiport ! --destination-port $port,23 -j DROP
+			fi
+			if [ $storage -eq 1 ];then
+				#all tcp packet will be drop except the packet's port number is http_port and 23
+				logger "iptables -t filter -I ACLSTORAGE -s $name -d $lan_ip -p tcp -m multiport ! --destination-port $port,23 -j ACCEPT"
+				iptables -t filter -I ACLSTORAGE -s $name -d $lan_ip -p tcp -m multiport ! --destination-port $port,23 -j ACCEPT
+			fi			
+		fi
+	fi
+}
+
+config_foreach loop_exist_hostname device
+

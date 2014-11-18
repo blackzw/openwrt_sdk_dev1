@@ -1,0 +1,223 @@
+<%+header%>
+<script type="text/javascript" src="<%=resource%>/wlan_country.js"></script>
+<script type="text/javascript" src="<%=resource%>/wlan.js"></script>
+<script>
+$(function($){
+	uiPageInit();
+})
+<%+admin_oem/wlanUiFn%>
+
+var P_wlanState = G_SDK_WLAN_STATE_ON;
+var P_wlanSettings = {};
+var P_bandwidthChangeTo20 = false;
+
+function uiPageInit(){
+	P_bandwidthChangeTo20 = false;
+	uiShowWlanAdvanced();
+	var $buttons = $(".text-center button");
+	$buttons.setBtnDisabled();
+	$(".cbi-section-node input,.cbi-section-node select").bind("input change keyup keydown paste",function(){
+		$buttons.removeBtnDisabled();
+	})
+}
+
+function uiShowWlanAdvanced(){	
+	P_wlanState = SDK.Wlan.GetWlanState();
+	if(P_wlanState == G_SDK_WLAN_STATE_ON){
+		P_wlanSettings = SDK.Wlan.GetWlanSettings();
+		$("#sel-waln-country").html(uiGetCountryList()).val(P_wlanSettings.CountryCode);
+
+		$selApIsolation = $("#sel-waln-ap-isolation");
+		if(P_wlanSettings.WlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+			$selApIsolation.val(P_wlanSettings.ApIsolation5G);
+		}else{
+			$selApIsolation.val(P_wlanSettings.ApIsolation);
+		}
+		
+		$("#sel-waln-bandwidth").val(P_wlanSettings.Bandwidth).attr("data-init",P_wlanSettings.Bandwidth);
+		uiShow802Mode(P_wlanSettings.WlanFrequency,P_wlanSettings.WMode);
+		uiChangeBandwidth();
+		$("#js-wlan-on-box").show();
+	}else{
+		$("#js-wlan-off-box").show();
+	}
+	
+}
+
+function uiShow802Mode(wlanFrequency,wMode){
+	var $selWaln802mode2g = $("#sel-waln-802mode-2g");
+	var $selWaln802mode5g = $("#sel-waln-802mode-5g");
+	$selWaln802mode2g.hide();
+	$selWaln802mode5g.hide();
+	if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+		$selWaln802mode5g.val(wMode).show();
+	}else{
+		$selWaln802mode2g.val(wMode).show();
+	}
+}
+
+function uiGetWMode(wlanFrequency){
+	if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+		return $("#sel-waln-802mode-5g").val();
+	}else{
+		return $("#sel-waln-802mode-2g").val();
+	}
+}
+
+function uiSetWlanSettings(){
+	var wlanSettingsInfo = {};
+	var wlanFrequency = P_wlanSettings.WlanFrequency;
+	var currentChannel;
+	var selectCountryCode = $("#sel-waln-country").val();
+	apIsolation = parseInt($("#sel-waln-ap-isolation").val());
+	wlanSettingsInfo.CountryCode = selectCountryCode;
+	wlanSettingsInfo.WMode = parseInt(uiGetWMode(wlanFrequency));
+	wlanSettingsInfo.Bandwidth = parseInt($("#sel-waln-bandwidth").val());
+
+	if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+		wlanSettingsInfo.ApIsolation5G = apIsolation;
+		currentChannel = selectCountryCode == P_wlanSettings.CountryCode?P_wlanSettings.Channel:G_SDK_WLAN_CHANNEL_AUTO_5G;
+	}else{
+		wlanSettingsInfo.ApIsolation = apIsolation;
+		currentChannel = selectCountryCode == P_wlanSettings.CountryCode?P_wlanSettings.Channel:G_SDK_WLAN_CHANNEL_AUTO_2G;
+	}
+	if(!check802ModeSecurity(wlanSettingsInfo.WMode,P_wlanSettings.SecurityMode)){
+		sys.alert("802.11n mode does not support WEP!");
+		return;
+	}
+	wlanSettingsInfo.Channel = currentChannel;
+	if(wlanSettingsInfo.Bandwidth == G_SDK_WLAN_BANDWIDTH_40){
+		if(wlanSettingsInfo.CountryCode=="CN" && currentChannel==165){
+			wlanSettingsInfo.Channel = G_SDK_WLAN_CHANNEL_AUTO_5G;
+		}
+	}
+	if(wlanSettingsInfo.WMode == G_SDK_WLAN_802MODE_AN || wlanSettingsInfo.WMode == G_SDK_WLAN_802MODE_GN){
+		wlanSettingsInfo.WpaType = G_SDK_WLAN_WPA_TYPE_AES;
+	}
+
+
+
+	var empty = {};
+	var postParams = $.extend(empty,P_wlanSettings,wlanSettingsInfo);
+
+	sys.confirm("<%:ids_wlan_rebootConfirm%>",function(){
+		sys.prompt("<%:ids_waiting%>",-1);
+		SDK.Wlan.SetWlanSettings(postParams,function(result){
+			if(result.error == 0){
+				sys.alert("<%:ids_succeeded%>",function(){
+					uiPageInit();
+				})
+			}else{
+				sys.alert("<%:ids_failed%>",function(){
+					uiPageInit();
+				})
+			}
+		})
+	})
+}
+
+function uiChangeBandwidth(){
+	var countryCode = $("#sel-waln-country").val();
+	var mode5g = parseInt($("#sel-waln-802mode-5g").val());
+	var mode2g = parseInt($("#sel-waln-802mode-2g").val());
+	var $selWalnBandwidth = $("#sel-waln-bandwidth");
+	var wlanFrequency = P_wlanSettings.WlanFrequency;
+	var countryIsSupport5Ghz40M = isSupport5Ghz40MCountry(countryCode);
+	
+	var modeIsSupport40M5g = (mode5g == G_SDK_WLAN_802MODE_AN)?true:false;
+
+	var modeIsSupport40M2g = (mode2g == G_SDK_WLAN_802MODE_GN)?true:false;
+
+	var isSupport40M = false;
+	if(wlanFrequency == G_SDK_WLAN_MODE_FREQUENCY_5G){
+		isSupport40M = countryIsSupport5Ghz40M && modeIsSupport40M5g;
+	}else{
+		isSupport40M = modeIsSupport40M2g;
+	}
+
+	if(isSupport40M){
+		$selWalnBandwidth.html('<option value="0" selected="selected">20M</option><option value="1">40M</option>');
+		var bandwidthInitVal = $selWalnBandwidth.attr("data-init");
+		if(!P_bandwidthChangeTo20 && bandwidthInitVal == G_SDK_WLAN_BANDWIDTH_40){
+			$selWalnBandwidth.val(G_SDK_WLAN_BANDWIDTH_40);
+		}
+	}else{
+		$selWalnBandwidth.html('<option value="0" selected="selected">20M</option>');
+		P_bandwidthChangeTo20 = true;
+	}
+	
+}
+
+
+function uiBandwidthMonitor(bandwidth){
+	if(parseInt(bandwidth) == G_SDK_WLAN_BANDWIDTH_40){
+		P_bandwidthChangeTo20 = false;
+	}else{
+		P_bandwidthChangeTo20 = true;
+	}
+}
+
+
+
+</script>
+<style type="text/css">
+	#js-wlan-on-box,#js-wlan-off-box{display: none;}
+</style>
+<div class="main-box border-notop">
+	<div class="form-horizontal pt20" id="js-wlan-on-box">
+		<div class="form">
+	    	<div class="cbi-map">
+	    		<fieldset class="cbi-section-node">
+	    		    <div class="control-group">
+	    		        <label class="control-label"><%:ids_wlan_countryRegion%>:</label>
+	    		        <div class="controls">
+	    		            <select id="sel-waln-country" onChange="uiChangeBandwidth()"></select>
+	    		        </div>
+	    		    </div>
+
+	    		    <div class="control-group">
+	    		        <label class="control-label"><%:ids_wlan_802Mode%>:</label>
+	    		        <div class="controls">
+	    		            <select id="sel-waln-802mode-2g" class="hidden" onChange="uiChangeBandwidth()">
+	    		                <option value="2"><%:802.11b%></option>
+	    		                <option value="3"><%:802.11g%></option>
+	    		                <option value="5"><%:802.11g+n%></option>
+	    		            </select>
+	    		            <select id="sel-waln-802mode-5g" class="hidden" onChange="uiChangeBandwidth()">
+	    		                <option value="1"><%:802.11a%></option>
+	    		                <option value="4"><%:802.11a+n%></option>
+	    		            </select>
+	    		        </div>
+	    		    </div>
+
+	    		    <div class="control-group">
+	    		        <label class="control-label"><%:ids_wlan_apIsolation%>:</label>
+	    		        <div class="controls">
+	    		            <select id="sel-waln-ap-isolation">
+	    		                <option value="0" selected="selected"><%:ids_disable%></option>
+	    		                <option value="1"><%:ids_enable%></option>
+	    		            </select>
+	    		        </div>
+	    		    </div>
+
+	    		    <div class="control-group">
+	    		        <label class="control-label"><%:ids_wlan_bandwidth%>:</label>
+	    		        <div class="controls">
+	    		            <select id="sel-waln-bandwidth" onChange="uiBandwidthMonitor($(this).val())">
+	    		                <option value="0" selected="selected"><%:20M%></option>
+	    		                <option value="1"><%:40M%></option>
+	    		            </select>
+	    		        </div>
+	    		    </div>
+
+	    		</fieldset>
+	    	</div>
+	    	<div class="text-center">
+	    	    <button type="submit" class="btn btn-primary" onclick="uiSetWlanSettings()"><%:ids_apply%></button>
+	    	    <button type="button" class="btn btn-primary" onclick="uiPageInit()"><%:ids_cancel%></button>
+	    	</div>
+		</div>
+	</div>
+	<div id="js-wlan-off-box" class="text-center"><%:ids_wlan_wlanOff%></div>
+</div>
+<%+footer%>

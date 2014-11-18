@@ -1,0 +1,23 @@
+#!/bin/sh
+# Copyright (C) 2011-2012 Luka Perkov <freecwmp@lukaperkov.net>
+
+# set these to appropriate values and remove comment if you want to use them
+
+#default_management_server_acs_hostname=""
+default_management_server_connection_request_url=""
+#default_wan_device_mng_interface_ip=""
+#default_wan_device_mng_interface_mac=""
+#default_device_hosts_dnsmasq_leases_file=""
+default_wan_interface="InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANIPConnection.1"
+default_lan_interface="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1"
+ping_diag_file_name="/tmp/ping_result"
+ping_request_file="/tmp/ping_request"
+download_diag_result_file="/tmp/downloaddiagnostics.log"
+download_diag_request_file="/tmp/download_request"
+upload_diag_result_file="/tmp/uploaddiagnostics.log"
+upload_test_file="/tmp/uploadtestfile.txt"
+upload_diag_request_file="/tmp/upload_request"
+#max size 10M
+upload_max_size=10485760
+
+

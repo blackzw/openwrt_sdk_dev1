@@ -1,0 +1,16 @@
+config samba config
+	option 'enabled' '0'
+	option 'name'			'H850'
+	option 'workgroup'		'WORKGROUP'
+	option 'description'		'H850'
+	option 'homes'			'0'
+	option users 'admin'
+	option password 'admin'
+	option read_only 'no'
+	option guest_ok 'no'
+	option device_type 1
+
+config sambashare airdisk
+	option name 'airdisk'
+	option path '/mnt/airdisk'
+

@@ -1,0 +1,120 @@
+<%+header%>
+<script>
+
+$(function($){
+	uiPageInit();
+})
+
+var baseHref_all = "<%=REQUEST_URI%>";
+var externalStorageDeviceState;//0:no device,1:mm100,2:usb device,3,mm100 and usb device;
+
+function uiPageInit(){
+
+	$("#btnApply, #btnCancel").setBtnDisabled();
+
+	$("input[type='radio']").bind("change click", function(){
+		$("#btnApply, #btnCancel").removeBtnDisabled();
+	});
+
+	$("#btnApply").click(function(){
+		setStorage();
+	});
+
+	$("#btnCancel").click(function(){
+		location.href = baseHref_all;
+	});
+
+	showStorageStatus();
+	showStorage();
+}
+function showStorageStatus(){
+	var externalDeviceInfo = SDK.System.GetExternalStorageDevice();
+	var $MMCheck = $("#MMCheck");
+	var $usbCheck = $("#usbCheck"); 
+	if (externalDeviceInfo != null){
+
+		var DeviceList = externalDeviceInfo.DeviceList;
+		var deviceCount = DeviceList.length;
+
+		if (deviceCount == 0){
+			$usbCheck.attr("disabled", "true");
+			$MMCheck.attr("disabled", "true");
+			$("#apply, #btnCancel").setBtnDisabled();
+		} else if (deviceCount == 1){
+			var devtype = DeviceList[0].DevType;
+
+			if (devtype == 0){
+				$usbCheck.attr("disabled", "true");
+			} else if (devtype == 1){
+				$MMCheck.attr("disabled", "true");
+			}
+
+		}
+	}
+}
+
+function showStorage(){
+	var storageStatus = SDK.Services.GetStorage().result.DevType;
+	if(storageStatus == 1){
+		$("#usbCheck").attr("checked", "true");
+	}else if(storageStatus == 0){
+		$("#MMCheck").attr("checked", "true");
+	}else{
+		$("#MMCheck").attr("checked", "false");
+		$("#usbCheck").attr("checked", "false");
+	}
+
+}
+
+
+function setStorage(){
+
+	var DevType = $("input[name=devtype]:checked").val();
+
+	var params = {
+		"DevType" : DevType
+	}
+	var result = SDK.Services.SetStorage(params.DevType).error;
+
+	if (result == API_RESULT_SUCCESS){
+		sys.alert("<%:Succeeded!%>", function(){
+			location.href = baseHref_all;
+		});
+	} else{
+		sys.alert("<%:Failed!%>", function(){
+			$("#set_btnApply,#set_btnCancer").setBtnDisabled();
+		});
+	}
+}
+
+</script>
+<div class="main-box border-notop">
+	<div class="border-all mb20">
+		<ul class="inline text-center pt20">
+			<li>
+				<img src="/luci-static/resources/icons/BarcodeCode.png" class="img-polaroid" width="200px" />
+				<p class="pt20"><%:ids_pCloud_desDownApp%></p>
+			</li>
+			<li class="ml200">
+				<img src="/luci-static/resources/icons/macinfo.png" class="img-polaroid" width="200px" />
+				<p class="pt20"><%:ids_pCloud_desH850Code%></p>
+			</li>
+		</ul>
+	</div>
+	<div class="border-all">
+		<h4><%:ids_pCloud_defaultStorage%></h4>
+		<ul class="storageWrap pt20 mb20">
+			<li class="ml200">
+				<label class="radio"><input type="radio" name="devtype" id="MMCheck" value="0" /><%:ids_pCloud_MM100%></label>
+			</li>
+			<li class="">
+				<label class="radio"><input type="radio" name="devtype" id="usbCheck" value="1" /><%:ids_pCloud_usbDisk%></label>
+			</li>
+		</ul>
+		<div class="text-center">
+		    <button type="button" class="btn btn-primary" id="btnApply"><%:ids_apply%></button>
+		    <button type="button" class="btn btn-primary" id="btnCancel"><%:ids_cancel%></button>
+		</div>
+	</div>
+</div>
+<%+footer%>

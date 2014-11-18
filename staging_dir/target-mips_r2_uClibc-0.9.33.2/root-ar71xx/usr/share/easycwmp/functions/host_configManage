@@ -1,0 +1,612 @@
+#!/bin/sh
+# Copyright (C) 2012 Luka Perkov <freecwmp@lukaperkov.net>
+
+get_hostcofigmanage_enable() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DHCPServerEnable"
+	local val
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:boolean"
+
+	case "$action" in
+		get_value)
+		val=`$UCI_GET dhcp.lan.ignore  2> /dev/null`
+		if [ $val -eq 1 ];then
+		    val="0"
+		else
+		    val="1"
+		fi
+		;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_enable() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DHCPServerEnable"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+			case "$val" in
+				enable|true|1)
+					$UCI_SET  dhcp.lan.ignore=0
+					;;
+
+				disable|false|0)
+					$UCI_SET  dhcp.lan.ignore=1
+					;;
+
+				*)
+					return $E_INVALID_PARAMETER_VALUE
+					;;
+			esac
+			$UCI_COMMIT dhcp
+			/etc/init.d/dnsmasq restart
+ 			;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+	      ;;
+	esac
+
+}
+
+get_hostcofigmanage_ReservedAddresses() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.ReservedAddresses"
+	local val
+	local nl="$1"
+	local permissions="1"
+
+	case "$action" in
+		get_value)
+			val=""
+			;;
+
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+# google dns server 8.8.8.8 is set default dns
+# the "6" indicating follow its value are dns servers. input the command "dnsmasq --help dhcp" to help
+set_hostcofigmanage_ReservedAddresses() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.ReservedAddresses"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+ 			;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+	      ;;
+	esac
+
+}
+
+get_hostcofigmanage_DHCPServerConfigurable() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DHCPServerConfigurable"
+	local val
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:boolean"
+
+	case "$action" in
+		get_value)
+			val=`$UCI_GET dhcp.lan.ignore 2> /dev/null`
+			if [ $val -eq 1 ];then
+				val="false"
+			else
+				val="true"
+			fi
+			;;
+
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+# google dns server 8.8.8.8 is set default dns
+# the "6" indicating follow its value are dns servers. input the command "dnsmasq --help dhcp" to help
+set_hostcofigmanage_DHCPServerConfigurable() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DHCPServerConfigurable"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+			case "$val" in
+				enable|true|1)
+					$UCI_SET dhcp.lan.ignore=0
+					;;
+
+				disable|false|0)
+					$UCI_SET  dhcp.lan.ignore=0
+					$UCI_SET dhcp.lan.dhcp_option="6,8.8.8.8"
+					;;
+
+				*)
+					return $E_INVALID_PARAMETER_VALUE
+					;;
+			esac
+			$UCI_COMMIT dhcp
+			/etc/init.d/dnsmasq restart
+ 			;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+	      ;;
+	esac
+
+}
+
+# the "6" indicating follow its value are dns servers. input the command "dnsmasq --help dhcp" to help
+get_hostcofigmanage_dns_servers() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DNSServers"
+	local val
+	local nl="$1"
+	local permissions="1"
+
+	case "$action" in
+		get_value)
+			val=`$UCI_GET dhcp.lan.dhcp_option`
+			local flag=${val%%,*}
+			if [ $flag -eq 6 ];then
+				val=${val#*,}
+			else
+				return $E_INVALID_ARGUMENTS
+			fi
+			;;
+
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_dns_servers() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DNSServers"
+	local val="$1"
+
+	case "$action" in
+		set_value)
+			$UCI_SET dhcp.lan.dhcp_option="6,$val"
+			$UCI_COMMIT dhcp
+			/etc/init.d/dnsmasq restart
+ 			;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+	      ;;
+	esac
+
+}
+
+get_hostcofigmanage_minAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.MinAddress"
+	local val
+	local temp
+	local newip
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:string"
+
+	case "$action" in
+		get_value)
+		val=`$UCI_GET dhcp.lan.start  2> /dev/null`
+		let newip=$val
+		temp=`$UCI_GET network.lan.ipaddr  2> /dev/null`
+		val=${temp%.*}
+		val=$val.$newip
+		;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_minAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.MinAddress"
+	local val="$2"
+	local max=""
+
+	case "$action" in
+		set_value)
+			local min=`echo $val |awk -F "." '{print $4}'`
+		 	local limit=`$UCI_GET dhcp.lan.limit 2> /dev/null`
+			let max=$min+$limit-1
+			if [ $max -gt 255 ] || [ $min -gt $max ];then
+			# if [ $min -gt $max ];then
+				return $E_INVALID_PARAMETER_VALUE
+			fi
+	   		$UCI_SET  dhcp.lan.start="$min"
+			$UCI_COMMIT dhcp
+			/etc/init.d/dnsmasq restart
+			;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_hostcofigmanage_maxAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.MaxAddress"
+	local val newip limit
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:string"
+
+	case "$action" in
+		get_value)
+		val=`$UCI_GET dhcp.lan.start  2> /dev/null`
+		limit=`$UCI_GET dhcp.lan.limit  2> /dev/null`
+		let newip=$val+$limit-1
+		[ $newip -gt 255 ] && return $E_INVALID_PARAMETER_VALUE
+		temp=`$UCI_GET network.lan.ipaddr  2> /dev/null`
+		val=${temp%.*}
+		val=$val.$newip
+		;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_maxAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.MaxAddress"
+	local val=$2
+
+	case "$action" in
+		set_value)
+		start=`$UCI_GET dhcp.lan.start  2> /dev/null`
+		max=`echo $val |awk -F "." '{print $4}'`
+		if [ $start -gt $max ];then
+			return $E_INVALID_PARAMETER_VALUE
+		fi
+		let val=$max-$start+1
+		$UCI_SET  dhcp.lan.limit="$val"
+		$UCI_COMMIT dhcp
+		/etc/init.d/dnsmasq restart
+		;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_hostcofigmanage_subnetMask() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.SubnetMask"
+	local  val
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:string"
+
+	case "$action" in
+		get_value)
+		val=`$UCI_GET network.lan.netmask  2> /dev/null`
+		;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_hostcofigmanage_domainName() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DomainName"
+	local val
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:string"
+
+	case "$action" in
+		get_value)
+		val=`$UCI_GET dhcp.@dnsmasq[0].domain  2> /dev/null`
+		;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_domainName() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DomainName"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+		$UCI_SET dhcp.@dnsmasq[0].domain="$val"
+		$UCI_COMMIT dhcp
+		/etc/init.d/dnsmasq restart
+		;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_hostcofigmanage_ip_routers() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPRouters"
+	local val
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:string"
+
+	case "$action" in
+		get_value)
+			val=`$UCI_GET network.lan.ipaddr`
+			;;
+
+		get_name)
+			[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+			;;
+
+		get_notification)
+			easycwmp_get_parameter_notification "val" "$parm"
+			;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_ip_routers() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPRouters"
+	local val="$1"
+
+	case "$action" in
+		set_value)
+			$UCI_SET network.lan.ipaddr=$val
+			$UCI_COMMIT network
+			;;
+
+		set_notification)
+			easycwmp_set_parameter_notification "$parm" "$val"
+			;;
+	esac
+}
+
+get_hostcofigmanage_DHCPLeaseTime() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DHCPLeaseTime"
+	local val
+	local nl="$1"
+	local permissions="1"
+	local type="xsd:int"
+
+	case "$action" in
+		get_value)
+		val=`$UCI_GET dhcp.lan.leasetime  2> /dev/null`
+		;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_hostcofigmanage_DHCPLeaseTime() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.DHCPLeaseTime"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+			if [ $val -ge -1 ];then
+		    	$UCI_SET  dhcp.lan.leasetime="$val"
+				$UCI_COMMIT dhcp
+				/etc/init.d/dnsmasq restart
+			else
+				return $E_INVALID_PARAMETER_VALUE
+			fi
+		;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_host_ipinterface_IPAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress"
+	local val
+	local nl="$1"
+    local permissions="1"
+    local type="xsd:string"
+
+    case "$action" in
+		get_value)
+		val=`$UCI_GET network.lan.ipaddr  2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_host_ipinterface_IPAddress() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceIPAddress"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+	    $UCI_SET  network.lan.ipaddr="$val"
+		$UCI_COMMIT network
+		;;
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_host_ipinterface_SubnetMask() {
+    local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceSubnetMask"
+    local val
+	local nl="$1"
+    local permissions="1"
+    local type="xsd:string"
+
+    case "$action" in
+	  get_value)
+	     val=`$UCI_GET network.lan.netmask  2> /dev/null`
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	   easycwmp_get_parameter_notification "val" "$parm"
+	;;
+	esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+set_host_ipinterface_SubnetMask() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceSubnetMask"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+	        $UCI_SET  network.lan.netmask="$val"
+			$UCI_COMMIT network
+		;;
+
+		set_notification)
+		  easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_host_ipinterface_Type() {
+   	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceAddressingType"
+	local val
+	local nl="$1"
+	local permissions="1"
+    local type="xsd:string"
+
+    case "$action" in
+		get_value)
+		 val=`$UCI_GET dhcp.lan.ignore  2> /dev/null`
+		 if [ $val -eq 1 ];then
+		    val="static"
+		 else
+		     val="DHCP"
+		 fi
+		 ;;
+
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+
+		get_notification)
+		   easycwmp_get_parameter_notification "val" "$parm"
+		;;
+    esac
+
+	easycwmp_output "$parm" "$val" "$permissions" "$type"
+
+}
+
+set_host_ipinterface_Type() {
+	local parm="InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.1.IPInterfaceAddressingType"
+	local val="$2"
+
+	case "$action" in
+		set_value)
+		if [ $val = "static" ];then
+	       $UCI_SET  dhcp.lan.ignore="1"
+	    else
+	       $UCI_SET  dhcp.lan.ignore="0"
+	    fi
+			$UCI_COMMIT dhcp
+			/etc/init.d/dnsmasq restart
+		;;
+
+		set_notification)
+			easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+# fix by Zhao Zijun begin
+get_host_ipinterface() {
+	get_host_ipinterface_IPAddress $1
+	get_host_ipinterface_SubnetMask $1
+	# get_host_ipinterface_Type $1
+}
+
+get_hostconfigmanage() {
+	get_hostcofigmanage_enable "$1"
+	get_hostcofigmanage_DHCPServerConfigurable "$1"
+	# get_hostcofigmanage_ReservedAddresses "$1"
+	get_hostcofigmanage_minAddress "$1"
+	get_hostcofigmanage_maxAddress "$1"
+	get_hostcofigmanage_subnetMask "$1"
+	get_hostcofigmanage_domainName "$1"
+	get_hostcofigmanage_ip_routers "$1"
+	get_hostcofigmanage_DHCPLeaseTime "$1"
+	get_hostcofigmanage_dns_servers "$1"
+}
+# fix by Zhao Zijun end

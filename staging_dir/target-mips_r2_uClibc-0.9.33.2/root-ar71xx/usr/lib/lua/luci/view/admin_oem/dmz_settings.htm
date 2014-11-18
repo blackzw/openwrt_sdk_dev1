@@ -1,0 +1,111 @@
+<%+header%>
+<script>
+	var dmzSettingsInfo = SDK.DMZ.GetDMZSettings();
+	var dmzStatus = dmzSettingsInfo.DMZStatus;
+	var dmzIPAddress = dmzSettingsInfo.DMZIPAddress;
+	var GatewayIP = SDK.LAN.GetLanSettings().IPv4IPAddress;
+    var baseHref = "<%=REQUEST_URI%>";
+	$(function($){
+		uiPageInit();
+	})
+
+	function uiPageInit(){
+		uiShowDMZSettings();
+	}
+
+	function uiShowDMZSettings(){
+		initData();
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		loadDMZStatus(dmzStatus);
+        $("input[name='dmzStatus']").change(function(){
+			loadDMZStatus($(this).val());
+		})
+		$("#DMZIPAddress").val(dmzIPAddress);
+
+		$("input").bind("input change keydown paste",function(){
+       		$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+    	});
+
+	}
+
+	function initData(){
+		$(".rule").hide();
+		$("#iptDMZAddress1,#iptDMZAddress2,#iptDMZAddress3").attr("disabled", true);
+		var DeviceIpArr = GatewayIP.split(".");
+		var DMZIpArr = dmzIPAddress.split(".");
+		for(i=0;i<3;i++){
+			DMZIpArr[i]=DeviceIpArr[i];
+		}
+		setIpVal("iptDMZAddress", DMZIpArr);
+	}
+
+    function setIpVal(id, IpArr) {
+		$.each(IpArr, function (i, v) {
+			$("#" + id + "" + (i + 1)).val(v);
+		})
+	}
+	function loadDMZStatus(data){		
+		if(data == 0){
+			$("#DMZStatusDisable").attr("checked",true);
+		} else if(data == 1){
+			$("#DMZStatusEnable").attr("checked",true);		
+		}			
+	}
+
+	function uiSetDMZSettings(){
+		var $iptDMZAddress4 = $("#iptDMZAddress4");
+		var dmzIPAddressVal =  $("#iptDMZAddress1").val() + "." + $("#iptDMZAddress2").val() + "." + $("#iptDMZAddress3").val() + "." + $iptDMZAddress4.val();
+		var dmzStatusVal = parseInt($("input[name='dmzStatus']:checked").val());	
+        var  num = $iptDMZAddress4.val();
+
+        if (num == "" || !isNumber(num) || num < 0 || num > 255) {
+            $("#iptDMZAddress4").showRule("<%:ids_dmz_ipAddressEmptyPrompt%>");
+            return false;
+        }
+
+		var result = SDK.DMZ.SetDMZSettings({"DMZStatus":dmzStatusVal,"DMZIPAddress":dmzIPAddressVal});		
+		switch(result.error){
+			case 0:
+				sys.alert("<%:ids_succeeded%>",function(){				
+					window.location.href = baseHref;
+					uiPageInit();
+				})
+				break;
+			default:
+			sys.alert("<%:ids_failed%>",function(){
+				uiPageInit();
+			})
+		}
+	}
+</script>
+<div class="main-box border-notop form-horizontal">
+	<div class="form pt20">
+	    <div class="control-group">
+	    	<label class="control-label"><%:ids_dmz_status%>:</label>
+	    	<div class="controls">
+				<label class="radio inline">
+				  	<input type="radio" id="DMZStatusEnable" name="dmzStatus" value="1"><%:ids_enable%>
+                </label>
+				<label class="radio inline">
+				  	<input type="radio" id="DMZStatusDisable" name="dmzStatus" value="0"><%:ids_disable%>
+                </label>
+	    	</div>
+	    </div>
+	    <div class="control-group">
+	    	<label class="control-label"><%:ids_dmz_ipAddress%>:</label>
+	    	<div class="controls" id="iptDMZAddress">
+	    	    <input id="iptDMZAddress1" type="text" class="ipt30" maxlength="3">.
+	    	    <input id="iptDMZAddress2" type="text" class="ipt30" maxlength="3">.
+	    	    <input id="iptDMZAddress3" type="text" class="ipt30" maxlength="3">.
+	    	    <input id="iptDMZAddress4" type="text" class="ipt30" maxlength="3">
+	        </div>
+	    </div>
+		<div class="text-center mb20">
+		    <button type="button" id="set_btnApply" class="btn btn-primary" onclick="uiSetDMZSettings()"><%:ids_apply%></button>
+		    <button type="button" id="set_btnCancel" class="btn btn-primary" onclick="uiPageInit()"><%:ids_cancel%></button>
+	    </div>
+	    <p class="alert alert-error span10 offset1 mt20"><b><%:ids_note%>:</b><%:ids_dmz_note%></p>
+	</div>
+</div>
+
+<%+footer%>

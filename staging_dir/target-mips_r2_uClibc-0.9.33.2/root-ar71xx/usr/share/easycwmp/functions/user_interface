@@ -1,0 +1,581 @@
+#!/bin/sh
+
+get_user_interface_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.UserInterface." "" "0"
+	;;
+esac
+}
+
+get_user_interface_password_required() {
+local nl="$1"
+local val=""
+local param="InternetGatewayDevice.UserInterface.PasswordRequired"
+local permissions="0"
+case "$action" in
+	get_value)
+	val="true"
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$param"
+	;;
+esac
+easycwmp_output "$param" "$val" "$permissions"
+return 0
+}
+
+get_user_interface_password_user_selectable()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.PasswordUserSelectable"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		val="false"
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_user_interface_upgrade_available()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.UpgradeAvailable"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		val="true"
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_user_interface_warranty_date()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.WarrantyDate"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].WarrantyDate 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_warranty_date()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.WarrantyDate"
+	
+	case "$action" in
+		set_value)
+		$UCI_SET easycwmp.@user_interface[0].WarrantyDate="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_name()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPName"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPName 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_name()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPName"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 64 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPName="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_help_desk()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPHelpDesk"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPHelpDesk 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_help_desk()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPHelpDesk"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 32 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPHelpDesk="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_home_page()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPHomePage"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPHomePage 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_home_page()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPHomePage"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPHomePage="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_help_page()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPHelpPage"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPHelpPage 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_help_page()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPHelpPage"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPHelpPage="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_logo()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPLogo"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPLogo 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_logo()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPLogo"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 4095 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPLogo="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+
+get_user_interface_isp_logo_size()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPLogoSize"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPLogoSize 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_logo_size()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPLogoSize"
+	
+	case "$action" in
+		set_value)
+		[ $var -lt 0 -o $var -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPLogoSize="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_mail_server()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPMailServer"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPMailServer 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_mail_server()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPMailServer"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPMailServer="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface_isp_news_server()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UserInterface.ISPNewsServer"
+	local permissions="1"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@user_interface[0].ISPNewsServer 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_user_interface_isp_news_server()
+{
+	local val=$1
+	local parm="InternetGatewayDevice.UserInterface.ISPNewsServer"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@user_interface[0].ISPNewsServer="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+}
+
+get_user_interface() {
+case "$1" in
+	InternetGatewayDevice.)
+	get_user_interface_object 0
+	get_user_interface_password_required "$2"
+	get_user_interface_password_user_selectable "$2"
+	get_user_interface_upgrade_available "$2"
+	get_user_interface_isp_name "$2"
+	get_user_interface_isp_help_desk "$2"
+	get_user_interface_isp_home_page "$2"
+	get_user_interface_isp_help_page "$2"
+	get_user_interface_isp_logo "$2"
+	get_user_interface_isp_logo_size "$2"
+	get_user_interface_isp_mail_server "$2"
+	get_user_interface_isp_news_server "$2"
+	get_user_interface_warranty_date "$2"
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.)
+	get_user_interface_object "$2"
+	get_user_interface_password_required 0
+	get_user_interface_password_user_selectable 0
+	get_user_interface_upgrade_available 0
+	get_user_interface_isp_name 0
+	get_user_interface_isp_help_desk 0
+	get_user_interface_isp_home_page 0
+	get_user_interface_isp_help_page 0
+	get_user_interface_isp_logo 0
+	get_user_interface_isp_logo_size 0
+	get_user_interface_isp_mail_server 0
+	get_user_interface_isp_news_server 0
+	get_user_interface_warranty_date 0
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.PasswordRequired)
+	get_user_interface_password_required 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.PasswordUserSelectable)
+	get_user_interface_password_user_selectable 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.UpgradeAvailable)
+	get_user_interface_upgrade_available 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.WarrantyDate)
+	get_user_interface_warranty_date 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPName)
+	get_user_interface_isp_name 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPHelpDesk)
+	get_user_interface_isp_help_desk 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPHomePage)
+	get_user_interface_isp_home_page 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPHelpPage)
+	get_user_interface_isp_help_page 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPLogo)
+	get_user_interface_isp_logo 0	
+	return 0
+	;;	
+	InternetGatewayDevice.UserInterface.ISPLogoSize)
+	get_user_interface_isp_logo_size 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPMailServer)
+	get_user_interface_isp_mail_server 0	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPNewsServer)
+	get_user_interface_isp_news_server 0	
+	return 0
+	;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_user_interface() {
+local fcode
+case "$action" in
+	set_value)
+	fcode=$E_NON_WRITABLE_PARAMETER
+	;;
+	set_notification)
+	fcode=$E_NOTIFICATION_REJECTED
+	;;
+esac
+
+case "$1" in
+	InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.UserInterface.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.UserInterface.PasswordRequired)
+	return $fcode
+	;;
+	InternetGatewayDevice.UserInterface.PasswordUserSelectable)
+	return $fcode
+	;;
+	InternetGatewayDevice.UserInterface.UpgradeAvailable)
+	return $fcode
+	;;
+	InternetGatewayDevice.UserInterface.WarrantyDate)
+	set_user_interface_warranty_date "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPName)
+	set_user_interface_isp_name "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPHelpDesk)
+	set_user_interface_isp_help_desk "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPHomePage)
+	set_user_interface_isp_home_page "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPHelpPage)
+	set_user_interface_isp_help_page "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPLogo)
+	set_user_interface_isp_logo "$2"	
+	return 0
+	;;	
+	InternetGatewayDevice.UserInterface.ISPLogoSize)
+	set_user_interface_isp_logo_size "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPMailServer)
+	set_user_interface_isp_mail_server "$2"	
+	return 0
+	;;
+	InternetGatewayDevice.UserInterface.ISPNewsServer)
+	set_user_interface_isp_news_server "$2"	
+	return 0
+	;;
+	
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_user_interface() { return 0; }
+
+add_object_user_interface() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_user_interface() { return $E_INVALID_PARAMETER_NAME; }

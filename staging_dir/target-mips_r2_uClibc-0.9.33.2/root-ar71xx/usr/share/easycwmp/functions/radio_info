@@ -1,0 +1,1122 @@
+#!/bin/sh
+
+PROFILE_LIST_PATH="/tmp/profile_list.txt"
+
+prepare_profile_list()
+{
+	if [ ! -f $PROFILE_LIST_PATH ]; then
+		local tmp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua get_profile_list $PROFILE_LIST_PATH` 
+	fi
+}
+
+refresh_profile_list()
+{
+	rm -f "$PROFILE_LIST_PATH"
+}
+
+get_current_apn_name()
+{
+	local nl="$1"
+	local val=""
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.X_ALU_APNName"
+	local permissions="0"
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua get_current_profile_name` 
+		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   local tempval=`echo ${temp#*ProfileName=}`
+		   val=`echo ${tempval%%;*}`		
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] &&  return $E_INVALID_ARGUMENTS 
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo." "" "0"
+	;;
+esac
+}
+
+get_radio_info_instance() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1." "" "0"
+	;;
+esac
+}
+
+get_profile_list_object()
+{
+	nl="$1"
+	case "$action" in
+		get_name)
+		[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN." "" "0"
+		;;
+	esac
+}
+
+get_profile_list_instance()
+{
+	nl="$1"
+	case "$action" in
+		get_name)
+		if [ "$nl" != "0" ]; then
+			prepare_profile_list
+			local pid
+			local pids=`cat $PROFILE_LIST_PATH | grep -o "Id=[0-9]\+;"`
+			for pid in $pids; do
+				local num=`echo ${pid#*Id=}`
+				num=`echo ${num%%;*}`
+				if [ -n $num ]; then
+					let num=$num+1
+					easycwmp_output "InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$num." "" "0"	
+				fi
+			done			
+		fi
+		;;
+	esac
+}
+
+get_profile_instance_apnname() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.APNName"
+	local nl="$2"
+	local val=""
+	local permissions="1"
+	local num
+	let num=$1-1
+	case "$action" in
+		get_value)
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "Id=$num;"`
+		tempval=`echo ${tempval#*APNName=}`
+		val=`echo ${tempval%%;*}`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+set_profile_instance_apnname() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.APNName"
+	local val="$2"
+	local pid
+	let pid=$1-1
+	case $action in
+		set_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua update_profile_item $pid strProfileName $val` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	refresh_profile_list
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0	
+}
+
+get_profile_instance_apn() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.APN"
+	local nl="$2"
+	local val=""
+	local permissions="1"
+	local num
+	let num=$1-1
+	case "$action" in
+		get_value)
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "Id=$num;"`
+		tempval=`echo ${tempval#*APN=}`
+		val=`echo ${tempval%%;*}`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+set_profile_instance_apn() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.APN"
+	local val="$2"
+	local pid
+	let pid=$1-1
+	case $action in
+		set_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua update_profile_item $pid strApn $val` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	refresh_profile_list
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0	
+}
+
+get_profile_instance_auth() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.AuthenticationProtocol"
+	local nl="$2"
+	local val=""
+	local permissions="1"
+	local num
+	let num=$1-1
+	case "$action" in
+		get_value)
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "Id=$num;"`
+		tempval=`echo ${tempval#*Auth=}`
+		val=`echo ${tempval%%;*}`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+set_profile_instance_auth() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.AuthenticationProtocol"
+	local val="$2"
+	local pid
+	let pid=$1-1
+	case $action in
+		set_value)
+		case "$val" in
+			None|NONE|none)
+			val=0
+			;;
+			PAP|pap|Pap)
+			val=1
+			;;
+			Chap|CHAP|chap)
+			val=2
+			;;
+			CHAP_PAP|chap_pap|Chap|Pap)
+			val=3
+			;;
+			*)
+			return $E_INVALID_ARGUMENTS
+			;;
+		esac
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua update_profile_item $pid nAuthType $val` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	refresh_profile_list
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0	
+}
+
+get_profile_instance_username() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.Username"
+	local nl="$2"
+	local val=""
+	local permissions="1"
+	local num
+	let num=$1-1
+	case "$action" in
+		get_value)
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "Id=$num;"`
+		tempval=`echo ${tempval#*Username=}`
+		val=`echo ${tempval%%;*}`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+set_profile_instance_username() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.Username"
+	local val="$2"
+	local pid
+	let pid=$1-1
+	case $action in
+		set_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua update_profile_item $pid strUserName $val` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	refresh_profile_list
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0	
+}
+
+get_profile_instance_password() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.Password"
+	local nl="$2"
+	local val=""
+	local permissions="1"
+	local num
+	let num=$1-1
+	case "$action" in
+		get_value)
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "Id=$num;"`
+		tempval=`echo ${tempval#*Password=}`
+		val=`echo ${tempval%%;*}`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+set_profile_instance_password() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.Password"
+	local val="$2"
+	local pid
+	let pid=$1-1
+	case $action in
+		set_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua update_profile_item $pid strPasswd $val` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	refresh_profile_list
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0	
+}
+
+
+get_profile_instance_dial_number() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.DialNumber"
+	local nl="$2"
+	local val=""
+	local permissions="1"
+	local num
+	let num=$1-1
+	case "$action" in
+		get_value)
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "Id=$num;"`
+		tempval=`echo ${tempval#*DialNum=}`
+		val=`echo ${tempval%%;*}`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+set_profile_instance_dial_number() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.1.X_ALU_APN.$1.DialNumber"
+	local val="$2"
+	local pid
+	let pid=$1-1
+	case $action in
+		set_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua update_profile_item $pid strDialNumber $val` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	refresh_profile_list
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0	
+}
+
+get_radio_info_network_priority() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.NetworkPriority"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSettings` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*NetworkModem=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_external_antenna() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.ExternalAntenna"
+	local nl="$1"
+	local val=""
+	local type="xsd:boolean"
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		val=`cat /proc/gpio38/rf_switch_ctrl 2> /dev/null`
+		if [ "$val" == "0" ];then
+			val="true"
+		else
+			val="false"
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_service_status() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.ServiceStatus"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkServiceStatus` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*ServiceStatus=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_plmn() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.PLMN"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*PLMN=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rat() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RAT"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkInfo` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*NETWORKTYPE=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_lte_band() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.LTEBand"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkLTEBand` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*LTEBand=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rssi_combined() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSSI.Combined"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*RSSI=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rssi_antenna1() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSSI.Antenna1"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		val=`cat /proc/gpio38/rf_switch_ctrl 2> /dev/null`
+		if [ "$val" == "0" ];then
+			local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue`
+			local errorval=`echo ${temp%%;*}`
+			if [ "Error=0" == ${errorval} ]; then
+			   	local tempval=`echo ${temp#*RSSI=}`
+		   		val=`echo ${tempval%%;*}`
+			else
+				return $E_INTERNAL_ERROR
+			fi
+		else
+			val=""
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rssi_antenna2() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSSI.Antenna2"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		val=""
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rsrp_combined()
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSRP.Combined"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*RSRP=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rsrp_antenna1()
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSRP.Antenna1"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		val=`cat /proc/gpio38/rf_switch_ctrl 2> /dev/null`
+		if [ "$val" == "0" ];then
+			local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue`
+			local errorval=`echo ${temp%%;*}`
+			if [ "Error=0" == ${errorval} ]; then
+			   	local tempval=`echo ${temp#*RSRP=}`
+		   		val=`echo ${tempval%%;*}`
+			else
+				return $E_INTERNAL_ERROR
+			fi
+		else
+			val=""
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rsrp_antenna2()
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSRP.Antenna2"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		val=""
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rsrq_combined()
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSRQ.Combined"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue`
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*RSRQ=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rsrq_antenna1() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSRQ.Antenna1"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+
+	case "$action" in
+		get_value)
+		val=`cat /proc/gpio38/rf_switch_ctrl 2> /dev/null`
+		if [ "$val" == "0" ];then
+			local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue`
+			local errorval=`echo ${temp%%;*}`
+			if [ "Error=0" == ${errorval} ]; then
+			   	local tempval=`echo ${temp#*RSRQ=}`
+		   		val=`echo ${tempval%%;*}`
+			else
+				return $E_INTERNAL_ERROR
+			fi
+		else
+			val=""
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rsrq_antenna2() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSRQ.Antenna2"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		val=""
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_rscp() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.RSCP"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*RSCP=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_ecno() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.ECNO"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkSignalValue` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*Ecno=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_imei() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.IMEI"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetSystemInfo` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*IMEI=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_imsi() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.IMSI"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetSystemInfo` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*IMSI=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_physical_cellid() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.PhysicalCellID"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkLacCellId` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*LACID=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+get_radio_info_cellid() 
+{
+	local parm="InternetGatewayDevice.WANDevice.1.X_ALU_RadioInfo.CellID"
+	local nl="$1"
+	local val=""
+	local permissions="0"
+	
+	case "$action" in
+		get_value)
+		local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua GetNetworkLacCellId` 		
+		local errorval=`echo ${temp%%;*}`
+		if [ "Error=0" == ${errorval} ]; then
+		   	local tempval=`echo ${temp#*CELLID=}`
+	   		val=`echo ${tempval%%;*}`
+		else
+			return $E_INTERNAL_ERROR
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$parm"
+		;;
+	esac
+	easycwmp_output "$parm" "$val" "$permissions"
+	return 0
+}
+
+
+get_profile_instance_params_all()
+{
+	local nl="$1"
+	local pid
+	prepare_profile_list	
+	local pids=`cat $PROFILE_LIST_PATH | grep -o "Id=[0-9]\+;"`
+	for pid in $pids; do
+		local num=`echo ${pid#*Id=}`
+		num=`echo ${num%%;*}`
+		if [ -n $num ]; then
+			let num=$num+1
+			get_profile_instance_apnname "$num" "$nl"
+			get_profile_instance_apn "$num" "$nl"
+			get_profile_instance_auth "$num" "$nl"
+			get_profile_instance_username "$num" "$nl"
+			get_profile_instance_password "$num" "$nl"
+			get_profile_instance_dial_number "$num" "$nl"			
+		fi
+	done
+}
+
+get_profile_instance_params_by_id()
+{
+	local nl="$1"	
+	local num="$2"
+	get_profile_instance_apnname "$num" "$nl"
+	get_profile_instance_apn "$num" "$nl"
+	get_profile_instance_auth "$num" "$nl"
+	get_profile_instance_username "$num" "$nl"
+	get_profile_instance_password "$num" "$nl"
+	get_profile_instance_dial_number "$num" "$nl"	
+}
+
+get_radio_info_params_all()
+{
+	get_current_apn_name "$1"
+	get_radio_info_object "$1"
+	get_radio_info_instance "$1"
+	get_radio_info_network_priority "$1"
+	get_radio_info_external_antenna "$1"
+	get_radio_info_service_status "$1"
+	get_radio_info_plmn "$1"
+	get_radio_info_rat "$1"
+	get_radio_info_lte_band "$1"
+	get_radio_info_rssi_combined "$1"
+	get_radio_info_rssi_antenna1 "$1"
+	# get_radio_info_rssi_antenna2 "$1"
+	get_radio_info_rsrp_combined "$1"
+	get_radio_info_rsrp_antenna1 "$1"
+	# get_radio_info_rsrp_antenna2 "$1"
+	get_radio_info_rsrq_combined "$1"
+	get_radio_info_rsrq_antenna1 "$1"
+	# get_radio_info_rsrq_antenna2 "$1"
+	get_radio_info_rscp "$1"
+	get_radio_info_ecno "$1"
+	get_radio_info_imei "$1"
+	get_radio_info_imsi "$1"
+	get_radio_info_physical_cellid "$1"
+	get_radio_info_cellid "$1"
+}
+
+get_new_profile_number()
+{
+	prepare_profile_list
+	local tempval
+	local i=0
+	for i in `seq 32`
+	do
+		tempval=`cat $PROFILE_LIST_PATH | grep "APNName=new_profile$i;" | wc -l`
+		if [ $tempval -eq 0 ]; then
+			echo $i
+			return 0
+		fi
+	done
+	echo $i
+}
+
+add_device_radio_info() {
+	local instance=1
+	local num=`get_new_profile_number`
+	local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua add_profile_item "new_profile$num" "" 0 "" "" "*99#"` 		
+	local errorval=`echo ${temp%%;*}`
+	if [ "Error=0" == ${errorval} ]; then
+	   	refresh_profile_list
+		prepare_profile_list
+		local tempval=`cat $PROFILE_LIST_PATH | grep "APNName=new_profile$num;"`
+		if [ -n $tempval ]; then
+			tempval=`echo ${tempval#*Id=}`
+			instance=`echo ${tempval%%;*}`
+			let instance=$instance+1
+		else
+			instance=0
+		fi
+	else
+		return $E_INTERNAL_ERROR
+	fi
+	echo $instance
+}
+
+delete_device_radio_info() {
+	local val
+	let val=$1-1
+	local temp=`cd /usr/share/easycwmp/oem;lua tr069_extend_api.lua del_profile_item $1` 		
+	local errorval=`echo ${temp%%;*}`
+	if [ "Error=0" == ${errorval} ]; then
+	   	return 0
+	else
+		return $E_INTERNAL_ERROR
+	fi
+}
+
+
+
+

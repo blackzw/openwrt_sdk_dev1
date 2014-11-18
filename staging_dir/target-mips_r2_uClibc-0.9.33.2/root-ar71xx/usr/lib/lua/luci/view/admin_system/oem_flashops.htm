@@ -1,0 +1,40 @@
+<%+header%>
+<script>
+function uiShowUpdateFileUrl(){
+	var $fileUrl = $("#file-url");
+	var $image = $("#archive");
+	var image = $image.val();
+	var imageUrlArr = image.split("\\");
+	var imageName = imageUrlArr[imageUrlArr.length-1];
+	$fileUrl.html(imageName);
+}
+</script>
+<div class="main-box border-notop">
+		<form method="post" action="<%=REQUEST_URI%>" enctype="multipart/form-data" class="form-horizontal pt100">
+			<p class="text-center text-info"><%:ids_system_backupRestoreTips%></p>
+			
+			<div class="control-group mb20">
+				<div class="controls">
+					<input class="btn btn-primary" type="submit" name="backup" value="<%:ids_backup%>" />
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" id="file-url"></label>
+				<div class="controls mb10">
+					<a class="btn_addPic" href="javascript:void(0);">
+				        <span><em>+</em><%:Add files%></span>
+				        <input type="file" name="archive" class="filePrew" id="archive" onchange="uiShowUpdateFileUrl()">
+				    </a>
+
+					<!-- <input type="file" name="archive" id="archive" /> -->
+				</div>
+				<div class="controls">
+					<input type="submit" class="btn btn-primary" name="restore" value="<%:ids_restore%>" />
+				</div>
+				<% if error_upload then %><p class="text-center rule"><%:ids_system_restore_error%></p><%end%>
+				
+			</div>
+		</form>
+</div>
+<%+footer%>

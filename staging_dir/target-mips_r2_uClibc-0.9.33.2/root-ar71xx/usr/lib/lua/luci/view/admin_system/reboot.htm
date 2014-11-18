@@ -1,0 +1,20 @@
+
+<%+header%>
+<div class="main-box border-notop">
+<p class="text-center pt100"><%:ids_system_rebootTips%></p>
+<%-
+local c = require("luci.model.uci").cursor():changes()
+if c and next(c) then
+-%>
+	<p class="warning"><%:Warning: There are unsaved changes that will be lost while rebooting!%></p> 
+<%-
+end
+if not reboot then 
+-%>
+<p class="text-center pt20"><a class="btn btn-primary"  href="<%=controller%>/admin/system/system/reboot?reboot=1"><%:ids_system_reboot%></a></p>
+<%- else -%>
+<p class="text-center"><%:Please wait: Device rebooting...%></p>
+<script type="text/javascript">setTimeout("location='<%=controller%>/admin'", 60000)</script>
+<%- end -%>
+</div>
+<%+footer%>

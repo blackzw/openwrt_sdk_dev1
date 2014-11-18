@@ -1,0 +1,108 @@
+<%+header%>
+<script>
+	$(function($){
+		uiPageInit();
+	})
+
+	function uiPageInit(){
+		uiShowConnectionMode();
+	}
+
+	function uiShowConnectionMode(){
+		$(".text-center button").setBtnDisabled();
+		var connectionSettingInfo = SDK.WanConnection.GetConnectionSettings();
+		var connectMode = connectionSettingInfo.ConnectMode;
+		var roamingConnect = connectionSettingInfo.RoamingConnect;
+		$("#sel_connection_mode").val(connectMode).change(function(){
+			uiShowRoamingField($(this).val());
+		});
+		uiShowRoamingField(connectMode);
+		$("#roam-auto-connect").attr("checked",roamingConnect == G_SDK_ROAMING_CONNECT_ON?true:false);
+		//$("#ipt-idleTime").val(connectionSettingInfo.IdleTime);
+
+		var connectionType = SDK.WanConnection.GetConnectionType();
+		$("#sel_connection_type").val(connectionType);
+		$("#sel_connection_mode,#roam-auto-connect,#sel_connection_type").bind("input change keyup keydown paste",function(){
+       		$(".text-center button").removeBtnDisabled();
+    	});
+
+	}
+
+	function uiShowRoamingField(connectMode){
+		$("#roam-auto-connect-field").css("display",connectMode == G_SDK_CONNECT_MODE_MANUAL?"none":"block");
+	}
+
+	function uiSetConnectionMode(){
+		var idleTime = $("#ipt-idleTime").val();
+		var connectMode = $("#sel_connection_mode").val();
+		var roamState = G_SDK_ROAMING_CONNECT_OFF;
+		if(connectMode == G_SDK_CONNECT_MODE_AUTO){
+			roamState = $("#roam-auto-connect").attr("checked") == "checked"?G_SDK_ROAMING_CONNECT_ON:G_SDK_ROAMING_CONNECT_OFF;
+		}else{
+			roamState = G_SDK_ROAMING_CONNECT_OFF;
+		}
+		 
+		
+		var result = SDK.WanConnection.SetConnectionSettings(idleTime,roamState,connectMode);
+		switch(result.error){
+			case 0:
+				var setConnectionTypeResult = SDK.WanConnection.SetConnectionType(parseInt($("#sel_connection_type").val()));
+				if(setConnectionTypeResult.error == 0){
+					sys.alert("<%:ids_succeeded%>",function(){
+						uiPageInit();
+					})
+				}else{
+					sys.alert("<%:ids_failed%>",function(){
+						uiPageInit();
+					})
+				}
+				break;
+			default:
+			sys.alert("<%:ids_failed%>",function(){
+				uiPageInit();
+			})
+		}
+	}
+</script>
+<div class="main-box border-notop">
+	<div class="form">
+		<div class="cbi-map">
+			<div class="form-horizontal pt20">
+			    <div class="control-group">
+			        <label class="control-label"><%:ids_netwrok_connectionMode%>:</label>
+			        <div class="controls">
+			            <select class="" id="sel_connection_mode" size="1">
+			                <option value="1"><%:ids_auto%></option>
+			                <option value="0"><%:ids_manual%></option>
+			            </select>
+			        </div>
+			    </div>			
+			    <input type="hidden" id="ipt-idleTime"/>
+			    <div class="control-group" id="roam-auto-connect-field">
+			        <div class="controls">
+			        	<label class="checkbox">
+			            	<input class="cbi-input-checkbox" type="checkbox" id="roam-auto-connect"> <%:ids_netwrok_roamingEnable%>
+			            </label>
+			        </div>
+			    </div>
+				
+				<div class="control-group">
+			        <label class="control-label"><%:ids_netwrok_connnectIpMode%>:</label>
+			        <div class="controls">
+			            <select id="sel_connection_type" size="1">
+			                <option value="0"><%:IPV4%></option>
+			                <option value="2"><%:IPV6%></option>
+			                <option value="3"><%:IPV4&IPV6%></option>
+			            </select>
+			        </div>
+			    </div>
+
+			    <div class="text-center">
+				    <button type="button" class="btn btn-primary" onclick="uiSetConnectionMode()"><%:ids_apply%></button>
+				    <button type="button" class="btn btn-primary" onclick="uiPageInit()"><%:ids_cancel%></button>
+			    </div>
+			</div>			
+		</div>
+	</div>
+</div>
+<%+footer%>

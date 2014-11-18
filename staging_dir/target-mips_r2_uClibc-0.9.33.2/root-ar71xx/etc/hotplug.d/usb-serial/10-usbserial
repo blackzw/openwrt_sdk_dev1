@@ -1,0 +1,52 @@
+#!/bin/sh
+
+ATDEVPATH="/tmp/at_port.log"
+
+get_interface_num()
+{
+	local dev_path=$1
+	local counter=`echo $dev_path | awk -F "/" '{print NF-1}'`
+	local interface=`echo $dev_path | awk -F "/" '{print $"'$counter'"}'`
+	local num=${interface##*.}
+	echo $num
+}
+
+on_add_usbserial_device()
+{
+	local num=`get_interface_num $1`
+	local exp_num=`uci get rild_service.SerialPort.InterfaceId 2>/dev/null`
+	if [ "$num" == "$exp_num" ]; then
+		echo "/dev/$2" > $ATDEVPATH
+		#if [ -c "/dev/$2" ]; then
+		#	echo "on add exist!" >> /tmp/usbserial.txt
+		#fi
+	fi
+	return 0
+}
+
+on_del_usbserial_device()
+{
+	local num=`get_interface_num $1`   
+	local exp_num=`uci get rild_service.SerialPort.InterfaceId 2>/dev/null`                                                                                            
+	if [ "$num" == "$exp_num" ]; then                                                                                                     
+		rm -f $ATDEVPATH 
+		rm -f "/dev/$2"                          
+	#	if [ ! -c "/dev/$2" ]; then
+			#echo "on del non-exist!" >> /tmp/usbserial.txt	
+	#		/etc/init.d/rild restart	
+	#	fi
+	fi                                                                                                                             
+	return 0 
+}
+
+case "$ACTION" in
+	add)
+	on_add_usbserial_device $DEVPATH $DEVICENAME
+	;;
+	remove)
+	on_del_usbserial_device $DEVPATH $DEVICENAME
+	;;
+esac
+#echo "action=$ACTION device=$DEVICE devicename=$DEVICENAME devname=$DEVNAME devpath=$DEVPATH product=$PRODUCT type=$TYPE interface=$INTERFACE" >> /tmp/usbserial.txt
+
+

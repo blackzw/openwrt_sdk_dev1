@@ -1,0 +1,19 @@
+#!/bin/sh
+if [ "$ACTION" = "released" -a "$BUTTON" = "reset" ] && [ 5 -le $SEEN ]; then
+	logger "reset button has been pressed $SEEN seconds"
+	firstboot
+	echo 1 > /sys/class/leds/h850\:yellow\:wps/brightness
+	echo 1 > /sys/class/leds/h850\:yellow\:sms/brightness
+	echo 1 > /sys/class/leds/h850\:yellow\:wifi_2.4g/brightness 
+	echo 1 > /sys/class/leds/h850\:red\:wifi_5g/brightness 
+	echo 1 > /sys/class/leds/h850\:red\:network/brightness
+	echo 1 > /sys/class/leds/h850\:green\:network/brightness
+	echo 1 > /sys/class/leds/h850\:blue\:network/brightness
+	echo 1 > /sys/class/leds/h850\:red\:signal/brightness
+	echo 1 > /sys/class/leds/h850\:green\:signal/brightness
+	echo 1 > /sys/class/leds/h850\:blue\:signal/brightness 
+	echo 1 > /sys/class/leds/h850\:green\:lan1/brightness 
+	echo 1 > /sys/class/leds/h850\:green\:lan2/brightness
+	reboot
+	logger "reset operation has been finished, system will reboot"
+fi

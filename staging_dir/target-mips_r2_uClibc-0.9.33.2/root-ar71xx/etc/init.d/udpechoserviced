@@ -1,0 +1,42 @@
+#!/bin/sh /etc/rc.common
+START=99
+
+local UCI_GET="uci get"
+
+start() {
+	local enabled
+	local interface
+	local src_ip_addr
+	local port
+	local plus_enable
+
+	enabled=`$UCI_GET easycwmp.@UdpEchoConfig[0].Enable 2>/dev/null`
+	interface=`$UCI_GET easycwmp.@UdpEchoConfig[0].Interface 2>/dev/null`
+	src_ip_addr=`$UCI_GET easycwmp.@UdpEchoConfig[0].SourceIPAddress 2>/dev/null`
+	port=`$UCI_GET easycwmp.@UdpEchoConfig[0].UDPPort 2>/dev/null`
+	plus_enable=`$UCI_GET easycwmp.@UdpEchoConfig[0].EchoPlusEnabled 2>/dev/null`
+
+	[ "$enabled" = "0" ] && return 1
+
+	if [ ! -z "$interface" ]; then
+		interface="-i $interface"
+	fi
+		
+	src_ip_addr="-a $src_ip_addr"
+
+	port="-p $port"
+	
+	if [ "$plus_enable" = "1" ]; then
+		plus_enable="-e"
+	else
+		plus_enable=""
+	fi
+		
+	service_start /usr/sbin/udpechoservice -s $interface $src_ip_addr $port $plus_enable
+	
+	
+}
+
+stop() {
+	service_stop /usr/sbin/udpechoservice
+}

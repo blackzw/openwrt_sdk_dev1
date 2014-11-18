@@ -1,0 +1,330 @@
+#!/bin/sh
+
+get_device_hosts_number_of_leases() {
+	local _static=`$UCI_SHOW dhcp 2> /dev/null | fgrep 'dhcp.' | fgrep '.mac=' | wc -l`
+	local _dynamic=`wc -l /var/dhcp.leases  | awk '{ print $1 }'`
+	eval "export -- \"$2=\"\"$_static\"\"\""
+	eval "export -- \"$3=\"\"$_dynamic\"\"\""
+}
+
+
+
+get_device_hosts_ip_address() {
+	local _leases_file=$1
+	local _num=$2
+	local _num_static_leases=$3
+	local _num_dynamic_leases=$4
+	local _ip
+	if [ $_num -le $_num_static_leases ]; then
+		let local _uci_num=$_num-1
+		_ip=`$UCI_GET dhcp.@host[$_uci_num].ip 2> /dev/null`
+	fi
+	let _num=$_num-$_num_static_leases
+	if [ $_num -gt 0 -a $_num -le $_num_dynamic_leases ]; then
+		local _sed_cmd=`echo -n \'$_num; echo p\'`
+		_ip=`eval sed -n $_sed_cmd $_leases_file | awk '{ print $3 }'`
+	fi
+	eval "export -- \"$5=\"\"$_ip\"\"\""
+}
+
+
+get_lan_hosts_MACAddress() {
+
+local parm="InternetGatewayDevice.LANDevice.1.Hosts.Host.$1.MACAddress"
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+     fi
+
+   local val
+
+   local permissions="1"
+   	local type="xsd:string"
+   case "$action" in
+      get_value)
+        get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+	if [ $1 -le $num_static_leases ]; then
+		let local uci_num=$1-1
+		val=`$UCI_GET dhcp.@host[$uci_num].mac 2> /dev/null`
+	fi
+	let num=$1-$num_static_leases
+	if [ $num -gt 0 -a $num -le $num_dynamic_leases ]; then
+		local sed_cmd=`echo -n \'$num; echo p\'`
+		val=`eval sed -n $sed_cmd $leases_file | awk '{ print $2 }'`
+	fi
+        ;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$parm"
+        ;;
+   esac
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+
+}
+
+get_lan_hosts_IPAddress() {
+       local parm="InternetGatewayDevice.LANDevice.1.Hosts.Host.$1.IPAddress"
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+      fi
+     local val
+     local permissions="1"
+     local type="xsd:string"
+     case "$action" in
+      get_value)
+       get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+       get_device_hosts_ip_address "$leases_file" "$1" "$num_static_leases" "$num_dynamic_leases" "val"
+       eval "export -- \"$2=\"\"$val\"\"\""
+	;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$parm"
+	;;
+    esac
+	
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+
+}
+
+
+
+get_lan_hosts_AddressSource() {
+      local parm="InternetGatewayDevice.LANDevice.1.Hosts.Host.$1.AddressSource"
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+      local permissions="1"
+       local type="xsd:string"
+      local val
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+     fi
+     local permissions="1"
+    case "$action" in
+      get_value)
+	get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+	if [ $1 -le $num_static_leases ]; then
+		val="Static"
+	fi
+	let num=$1-$num_static_leases
+	if [ $num -gt 0 -a $num -le $num_dynamic_leases ]; then
+		val="DHCP"
+	fi
+        ;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$parm"
+	;;
+   esac
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lan_hosts_LeaseTimeRemaining() {
+local parm="InternetGatewayDevice.LANDevice.1.Hosts.Host.$1.LeaseTimeRemaining"
+    local val
+
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+      local permissions="1"
+      local type="xsd:int"
+      local val
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+     fi
+    case "$action" in
+       get_value)
+        get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+	if [ $1 -le $num_static_leases ]; then
+		val="-1"
+	fi
+	let num=$1-$num_static_leases
+	if [ $num -gt 0 -a $num -le $num_dynamic_leases ]; then
+		local sed_cmd=`echo -n \'$num; echo p\'`
+		local t1=`eval sed -n $sed_cmd $leases_file | awk '{ print $1 }'`
+		local t2=`date +%s`
+		let val=$t1-$t2
+	fi
+       ;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$parm"
+	;;
+   esac
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+
+}
+
+get_lan_hosts_HostName() {
+
+local parm="InternetGatewayDevice.LANDevice.1.Hosts.Host.$1.HostName"
+	local val
+
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+      local permissions="1"
+      local type="xsd:string"
+      local val
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+     fi
+   case "$action" in
+       get_value)
+        get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+	if [ $1 -le $num_static_leases ]; then
+		let local uci_num=$1-1
+		val=`$UCI_GET dhcp.@host[$uci_num].name 2> /dev/null`
+	fi
+	let num=$1-$num_static_leases
+	if [ $num -gt 0 -a $num -le $num_dynamic_leases ]; then
+		local sed_cmd=`echo -n \'$num; echo p\'`
+		val=`eval sed -n $sed_cmd $leases_file | awk '{ print $4 }'`
+		if [ "x$val" == "x*" ]; then val=""; fi
+	fi
+   ;;
+   get_name)
+     [ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+   ;;
+    get_notification)
+    easycwmp_get_parameter_notification "val" "$parm"
+    ;;
+  esac
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+
+}
+
+get_lan_hosts_Active() {
+      local parm="InternetGatewayDevice.LANDevice.1.Hosts.Host.$1.Active"
+      local val
+      local ip
+
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+      local permissions="1"
+      local type="xsd:boolean"
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+      fi
+   case "$action" in
+       get_value)
+        get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+	get_device_hosts_ip_address "$leases_file" "$1" "$num_static_leases" "$num_dynamic_leases" "ip"
+	val=`ping -c 1 $ip 2>&1 > /dev/null ; echo $?`
+	let val=!$val
+    ;;
+   get_name)
+     [ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+   ;;
+    get_notification)
+    easycwmp_get_parameter_notification "val" "$parm"
+    ;;
+  esac
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+
+
+}
+
+get_lan_hosts_wire_portstatus() {
+      local var
+      local lan_device_up
+      local num=0
+      local port1
+      local port2
+      lan_device_up=`swconfig dev switch0 show| grep -E port\:1\|port\:2|grep "up"`
+      if [ -z "$lan_device_up" ];then 
+           var="down"
+        else
+           local num=`echo $lan_device_up |wc -l`
+           if [ $num -eq 2 ];then
+                port1=`echo $lan_device_up |head -1`
+                port2=`echo $lan_device_up |tail -1`
+            elif [ $num -eq 1 ];then
+              port1=$lan_device_up
+           fi
+      fi
+      eval "export -- \"$1=\"\"$num\"\"\""
+      eval "export -- \"$2=\"\"$port1\"\"\""
+      eval "export -- \"$3=\"\"$port2\"\"\""
+
+}
+
+get_lan_hosts_HostNumberOfEntries() {
+      local parm="InternetGatewayDevice.LANDevice.1.Hosts.HostNumberOfEntries"
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+      local permissions="1"
+      local type="xsd:unsignedInt"
+      local portvalue
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+     fi
+
+
+   case "$action" in
+      get_value)
+        get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+        get_lan_hosts_wire_portstatus "portvalue" "pa" "pb"
+        let local val=$num_static_leases+$num_dynamic_leases+$portvalue
+      
+        ;;
+	get_name)
+	[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+	;;
+	get_notification)
+	easycwmp_get_parameter_notification "val" "$parm"
+	;;	
+   esac
+easycwmp_output "$parm" "$val" "$permissions" "$type"
+}
+
+get_lan_hosts_num() {
+      local leases_file
+      local num_static_leases
+      local num_dynamic_leases
+
+      if [ -z "$default_dnsmasq_leases_file" ]; then
+         leases_file="/var/dhcp.leases"
+      else
+         leases_file=$default_dnsmasq_leases_file
+      fi
+     get_device_hosts_number_of_leases "$leases_file" "num_static_leases" "num_dynamic_leases"
+     let num_max=num_static_leases+num_dynamic_leases
+
+     eval "export -- \"$1=\"\"$num_max\"\"\"" 
+}
+
+
+
+

@@ -1,0 +1,164 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	});
+	/* Global */
+	var languageInfo,currLanguage, languageList, timeInfo, currTime,currTimeZone,TimeZoneList;
+	var systemInfo,ntpServer1,ntpServer2,antennaSwitch;
+	languageInfo = SDK.System.GetLanguage();
+	languageList = languageInfo.LanguageList;
+	currLanguage = languageInfo.Language;
+	timeInfo = SDK.System.GetCurrentTime();
+	currTime = timeInfo.CurrTime;
+	TimeZoneList = timeInfo.TimeZoneList;
+	currTimeZone = timeInfo.ZoneName;
+	systemInfo = SDK.System.GetSystemSettings();
+	ntpServer1 = systemInfo.NtpServer1;
+	ntpServer2 = systemInfo.NtpServer2
+	antennaSwitch = systemInfo.AntennaSwitch
+	var antennaList ={0: "<%:ids_system_antennaExternal%>", 1: "<%:ids_system_antennaInternal%>"}
+	
+       
+	/* 	logic control */
+	function uiPageInit()
+	{
+		removeRuleText();
+	    initLanguageList();
+        initTimeZoneList();
+		initAntennaList();
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		$("#set_btnApply").click(applyEnvent);
+		$("#set_btnCancel").click(function()
+		{
+			 uiPageInit();
+		});
+		$("input,select").bind("input change keyup keydown paste", function()
+		{
+			$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+		})
+		//$("#txt-current-time").html(currTime);		
+		$("#ipt-ntp-server1").val(ntpServer1);
+		$("#ipt-ntp-server2").val(ntpServer2);
+	}
+    function  initLanguageList(){
+    	$("#sel-language-setting").findSelectRes(languageList).val(currLanguage);
+    }
+    function initTimeZoneList(){
+    	$("#sel-time-zone").findSelectIndex(TimeZoneList).val(currTimeZone);
+    }
+	function initAntennaList(){
+    	$("#sel-antenna-switch").findSelectRes(antennaList).val(antennaSwitch);
+    }
+	function applyEnvent()
+	{
+		var $currLanguage = $("#sel-language-setting");	
+		var $currTimeZone =$("#sel-time-zone");
+		var $antennaSwitch =$("#sel-antenna-switch");
+		var $ntpServer1 = $("#ipt-ntp-server1");
+		var $ntpServer2 = $("#ipt-ntp-server2");
+	    currLanguage = $currLanguage.val();	
+		currTimeZone = $currTimeZone.val();
+		antennaSwitch = $antennaSwitch.val();
+		
+		ntpServer1=$ntpServer1.val()
+		ntpServer2=$ntpServer2.val() 
+		if(ntpServer1!="" && cbi_validators.host.apply(ntpServer1)==false){
+            $ntpServer1.showRule("<%:ids_system_ntpServerPrompt%>")
+			return
+		}
+		if(ntpServer2!="" && cbi_validators.host.apply(ntpServer2)==false){
+			 $ntpServer2.showRule("<%:ids_system_ntpServerPrompt%>")
+			return
+		}
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		var time_params = {
+			"TimeZone" : currTimeZone
+		}
+		var systemInfo_params = {
+			"AntennaSwitch":antennaSwitch,
+			"NtpServer1" :ntpServer1,
+			"NtpServer2" :ntpServer2
+		}
+		var result1 = SDK.System.SetLanguage(currLanguage).error;
+		var result2 = SDK.System.SetCurrentTime(time_params).error;
+		var result3 = SDK.System.SetSystemSettings(systemInfo_params).error;
+		if (result1 == API_RESULT_SUCCESS && result2 == API_RESULT_SUCCESS && result3 == API_RESULT_SUCCESS)
+		{
+			sys.alert("<%:ids_succeeded%>", function()
+			{
+				location.reload();
+			});
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+			});
+		}
+
+	}
+
+	/* Util */
+	function removeRuleText(){
+	    $(".iptText").removeClass("errorIpt");
+        $(".rule").remove();
+    }
+
+</script>
+
+<!-- System Settings -->
+<div class="main-box border-notop form-horizontal">
+	<div class="form" id="system_setting_page_map">
+		<div class="cbi-map">
+			<fieldset class="cbi-section form-field">
+				<div class="control-group">
+					<label class="control-label"><%:ids_system_antennaSwitch%>:</label>
+					<div class="controls">
+						<select class="cbi-input-select" id="sel-antenna-switch">
+	    		       </select>
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_system_languageSettings%>:</label>
+					<div class="controls">
+						<select class="cbi-input-select" id="sel-language-setting">
+	    		       </select>
+					</div>
+				</div>
+				<!--<div class="control-group">
+					<label class="control-label"><%:ids_system_currentTime%>:</label>
+					<div class="controls">
+						<p id="txt-current-time"></p>
+					</div>
+				</div> -->
+				<div class="control-group">
+					<label class="control-label"><%:ids_system_ntpServer1%>:</label>
+					<div class="controls">
+						<input type="text" id="ipt-ntp-server1" value="" />
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_system_ntpServer2%>:</label>
+					<div class="controls">
+						<input type="text" id="ipt-ntp-server2" value="" />
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label"><%:ids_system_timeZone%>:</label>
+					<div class="controls">
+						<select class="cbi-input-select" id="sel-time-zone">
+	    		       </select>
+					</div>
+				</div>
+				<div class="text-center">
+					<button class="btn btn-primary" id="set_btnApply"><%:ids_apply%></button>
+					<button class="btn btn-primary" id="set_btnCancel"><%:ids_cancel%></button>
+				</div>
+			</fieldset>
+		</div>
+	</div>
+</div>
+<%+footer%>
+

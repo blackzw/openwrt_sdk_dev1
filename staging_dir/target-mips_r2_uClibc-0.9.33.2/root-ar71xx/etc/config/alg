@@ -1,0 +1,6 @@
+config alg_switch 'alg_switch'
+	option ftp '1'
+	option pptp '1'
+	option h323 '1'
+	option sip '1'
+	option sip_port '5060'

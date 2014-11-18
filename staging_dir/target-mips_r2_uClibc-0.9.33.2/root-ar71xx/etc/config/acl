@@ -1,0 +1,5 @@
+config device
+	option name 'default'
+	option internet '1'
+	option storage '1'
+	option type 'default'

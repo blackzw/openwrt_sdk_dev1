@@ -1,0 +1,78 @@
+<%+header%>
+<script>
+	var upnpSettingsInfo = SDK.UPnP.GetUPnPSettings();
+	var upnpStatus = upnpSettingsInfo.UPnPStatus;
+    var baseHref = "<%=REQUEST_URI%>";
+	$(function($){
+		uiPageInit();
+	})
+
+	function uiPageInit(){
+		uiShowUPnPSettings();
+	}
+
+	function uiShowUPnPSettings(){
+		$("#set_btnApply,#set_btnCancel").setBtnDisabled();
+		loadUPnPStatus(upnpStatus);
+        $("input[name='upnpStatus']").change(function(){
+			loadUPnPStatus($(this).val());
+		})
+
+		$("input").bind("input change keydown paste",function(){
+       		$("#set_btnApply,#set_btnCancel").removeBtnDisabled();
+    	});
+
+	}
+
+	function loadUPnPStatus(data){		
+		if(data == 0){
+			$("#UPnPStatusDisable").attr("checked",true);
+		} else if(data == 1){
+			$("#UPnPStatusEnable").attr("checked",true);		
+		}			
+	}
+
+	function uiSetUPnPSettings(){		
+		var upnpStatusVal = parseInt($("input[name='upnpStatus']:checked").val());	
+
+		var result = SDK.UPnP.SetUPnPSettings({"UPnPStatus":upnpStatusVal});		
+		switch(result.error){
+			case 0:
+				sys.alert("<%:ids_succeeded%>",function(){				
+					window.location.href = baseHref;
+					uiPageInit();
+				})
+				break;
+			default:
+			sys.alert("<%:ids_failed%>",function(){
+				uiPageInit();
+			})
+		}
+	}
+</script>
+<div class="main-box border-notop">
+	<div class="form form-horizontal">
+		<div class="cbi-map pt20">
+		    <div class="control-group">
+		    	<label class="control-label"><%:ids_upnp_status%>:</label>
+		    	<div class="controls">
+					<label class="radio inline">
+					  	<input type="radio" id="UPnPStatusEnable" name="upnpStatus" value="1"><%:ids_enable%>
+                    </label>
+					<label class="radio inline">
+					  	<input type="radio" id="UPnPStatusDisable" name="upnpStatus" value="0"><%:ids_disable%>
+					</label>
+		    	</div>
+		    </div>
+			<div class="text-center">
+			    <button type="button" id="set_btnApply" class="btn btn-primary" onclick="uiSetUPnPSettings()"><%:ids_apply%></button>
+			    <button type="button" id="set_btnCancel" class="btn btn-primary" onclick="uiPageInit()"><%:ids_cancel%></button>
+		    </div>
+		    <div class="alert alert-error span10 offset1 mt20">
+		        <b><%:ids_note%>:</b><%:ids_upnp_note%>
+            </div>
+		</div>
+	</div>
+</div>
+
+<%+footer%>

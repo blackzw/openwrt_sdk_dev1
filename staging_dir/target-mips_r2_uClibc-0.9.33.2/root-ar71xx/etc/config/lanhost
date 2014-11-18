@@ -1,0 +1,9 @@
+
+config lan
+	option ipaddr ''
+	option macaddr ''
+
+config lan
+	option ipaddr ''
+	option macaddr ''
+

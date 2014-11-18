@@ -1,0 +1,80 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+	setInterval(function(){
+		uiPageInit();
+	},7000);
+})
+
+function uiPageInit(){
+	var LanPortInfoList = SDK.LAN.GetLanPortInfo();
+	if (!LanPortInfoList.hasOwnProperty("error")) {
+	    LanPortInfo = LanPortInfoList.List;
+    	if(LanPortInfo.length == 1){
+    		lan1Info();
+    	}else if(LanPortInfo.length > 1){
+    		lan1Info();
+    		lan2Info();
+    	}
+	}
+
+	function lan1Info(){
+		var lan1Status = LanPortInfo[0].ConnectionStatus;
+
+		if(lan1Status == 1){
+			$("#lan1Status").html("<%:ids_connected%>");
+			$("#lan1Ip").html(LanPortInfo[0].IPAddress);
+		    $("#lan1Mac").html(LanPortInfo[0].MACAddress);
+		    $("#lan1Dhcp").html(LanPortInfo[0].DHCPServer);
+		}else{
+			$("#lan1Status").html("<%:ids_disconnected%>");
+			$("#lan1Ip").html("--");
+		    $("#lan1Mac").html("--");
+		    $("#lan1Dhcp").html("--");
+		}
+	}
+	function lan2Info(){
+		var lan2Status = LanPortInfo[1].ConnectionStatus;
+		
+		if(lan2Status == 1){
+			$("#lan2Status").html("<%:ids_connected%>");
+			$("#lan2Ip").html(LanPortInfo[1].IPAddress);
+		    $("#lan2Mac").html(LanPortInfo[1].MACAddress);
+		    $("#lan2Dhcp").html(LanPortInfo[1].DHCPServer);
+		}else{
+			$("#lan2Status").html("<%:ids_disconnected%>");
+			$("#lan2Ip").html("--");
+		    $("#lan2Mac").html("--");
+		    $("#lan2Dhcp").html("--");
+		}	
+	}
+
+}
+
+</script>
+<div class="main-box border-notop">
+	<table class="table table-bordered">
+		<tr>
+			<td width="35%"><%:ids_lan_conStatus%></td>
+			<td width="35%" id="lan1Status"><%:ids_disconnected%></td>
+			<td id="lan2Status"><%:ids_disconnected%></td>
+		</tr>
+		<tr>
+			<td><%:ids_lan_ipAdress%></td>
+			<td id="lan1Ip">--</td>
+			<td id="lan2Ip">--</td>
+		</tr>
+		<tr>
+			<td><%:ids_lan_macAdress%></td>
+			<td id="lan1Mac">--</td>
+			<td id="lan2Mac">--</td>
+		</tr>
+		<tr>
+			<td><%:ids_lan_dhcpServer%></td>
+			<td id="lan1Dhcp">--</td>
+			<td id="lan2Dhcp">--</td>
+		</tr>
+	</table>
+</div>
+<%+footer%>

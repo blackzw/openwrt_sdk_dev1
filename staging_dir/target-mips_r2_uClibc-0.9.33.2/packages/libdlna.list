@@ -1,0 +1,12 @@
+./
+./usr
+./usr/include
+./usr/include/dlna.h
+./usr/lib
+./usr/lib/libdlna.so.0.2.3
+./usr/lib/libdlna.so.0
+./usr/lib/libdlna.a
+./usr/lib/pkgconfig
+./usr/lib/pkgconfig/libdlna.pc
+./usr/lib/libdlna.so
+./host

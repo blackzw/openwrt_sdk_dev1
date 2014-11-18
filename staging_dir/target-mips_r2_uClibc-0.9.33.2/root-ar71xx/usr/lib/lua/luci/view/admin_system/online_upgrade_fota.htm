@@ -1,0 +1,325 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+var SDK_UPDATE_NSTEP_INVALID_IGNORED = -1;
+var SDK_UPDATE_NSTEP_CHECK_VERSION_INFO_PHASE = 0;
+var SDK_UPDATE_NSTEP_DOWNLOAD_FIRMWARE_PHASE = 1;
+var SDK_UPDATE_NSTEP_FOTA_PROCESS = 2;
+
+var UI_UPDATE_STATE_ERROE = -1;
+var UI_UPDATE_STATE_NONE = 0;
+var UI_UPDATE_STATE_CHECKING = 1;
+var UI_UPDATE_STATE_CHECK_FAIL = 2;
+var UI_UPDATE_STATE_HAVE_NEW_VER = 3;
+var UI_UPDATE_STATE_NO_NEW_VER = 4;
+var UI_UPDATE_STATE_DOWNLOADING = 5;
+var UI_UPDATE_STATE_DOWNLOAD_COMPLETED = 6;
+var UI_UPDATE_STATE_DOWNLOAD_FAIL = 7;
+var UI_UPDATE_STATE_UPDATING = 8;
+var UI_UPDATE_STATE_RECOVERY = 9;
+
+var P_TIME_GET_FOTA_INFO = null;
+
+function uiPageInit(){
+	showBoxItem("#init-box");
+}
+
+function uiShowFOTAUpgradeState(){
+	var fotaStateInfo = uiGetFotaUpdateState();
+	switch(fotaStateInfo.state){
+		case UI_UPDATE_STATE_NONE:
+			showBoxItem("#init-box");
+			break;
+		case UI_UPDATE_STATE_CHECKING:
+			sys.prompt("<%:ids_update_checking%>",-1);
+			startGetFOTAUpgradeState();
+			break;
+		case UI_UPDATE_STATE_CHECK_FAIL:
+			sys.alert("<%:ids_update_checkFail%>",function(){
+				uiPageInit();
+			})
+			break;
+		case UI_UPDATE_STATE_HAVE_NEW_VER:
+			sys.confirm("<%:ids_update_downloadConfirm%>",function(){
+				uiSetFOTAStartDownload();
+			});
+			break;
+		case UI_UPDATE_STATE_NO_NEW_VER:
+			sys.alert("<%:ids_update_noNewSoft%>",function(){
+				uiPageInit();
+			})
+			break;
+		case UI_UPDATE_STATE_DOWNLOADING:
+			reStartLogoutTimer();
+			popUp.hide();
+			showBoxItem("#downloading-box");
+			$("#download-process").css("visibility","visible").html(fotaStateInfo.process+"%");
+			startGetFOTAUpgradeState();
+			break;
+		case UI_UPDATE_STATE_DOWNLOAD_COMPLETED:
+			showBoxItem("#init-box");
+			sys.confirm("<%:ids_update_updateConfirm%>",function(){
+				uiSetDeviceStartUpdate();
+			});
+			break;
+		case UI_UPDATE_STATE_DOWNLOAD_FAIL:
+			sys.alert("<%:ids_update_downloadFail%>",function(){
+				uiPageInit();
+			})
+			break;
+		case UI_UPDATE_STATE_UPDATING:
+			sys.prompt("<%:ids_update_Updating%>",-1);
+			startGetFOTAUpgradeState();
+			break;
+		case UI_UPDATE_STATE_RECOVERY:
+			sys.prompt("<%:ids_update_Updating%>",-1);
+			SDK.Services.RestartService(3);//restart rild
+			statrGetRestartRildResult();
+			break;
+		default:
+			sys.alert("<%:ids_update_updateFail%>",function(){
+				uiPageInit();
+			})
+	}
+}
+
+function uiGetFotaUpdateState(){
+	var updateState = UI_UPDATE_STATE_NONE;
+	var stateInfo = SDK.Update.GetFOTAUpgradeState();
+	var processInfo = 0;
+	if(stateInfo.hasOwnProperty("result")){
+		var result = stateInfo.result;
+		var nStep = result.nStep;
+		var nStatus = result.nStatus;
+		var nInfo = result.nInfo;
+		switch(nStep){
+			case SDK_UPDATE_NSTEP_CHECK_VERSION_INFO_PHASE:
+				if(nStatus == 1 && nInfo == 4 ){
+					updateState = UI_UPDATE_STATE_HAVE_NEW_VER;
+				}else if(nStatus == 0 && nInfo >=0 && nInfo <=7 ){
+					updateState = UI_UPDATE_STATE_CHECK_FAIL;
+				}else{
+					updateState = UI_UPDATE_STATE_CHECKING;
+				}
+				break;
+			case SDK_UPDATE_NSTEP_DOWNLOAD_FIRMWARE_PHASE:
+				if(nStatus>=0 && nStatus<=100){
+					updateState = UI_UPDATE_STATE_DOWNLOADING;
+					processInfo = nStatus;
+				}else{
+					updateState = UI_UPDATE_STATE_DOWNLOAD_FAIL;
+				}
+				break;
+			case SDK_UPDATE_NSTEP_FOTA_PROCESS:
+				switch(nStatus){
+					case -1:
+						if(nInfo == -1){
+							updateState = UI_UPDATE_STATE_UPDATING;
+						}else{
+							updateState = UI_UPDATE_STATE_ERROE;
+						}
+						break;
+					case 0:
+						updateState = UI_UPDATE_STATE_NO_NEW_VER;
+						break;
+					case 1:
+						updateState = UI_UPDATE_STATE_DOWNLOADING;
+						break;
+					case 2:
+						updateState = UI_UPDATE_STATE_DOWNLOAD_COMPLETED;
+						break;
+					case 3:
+						updateState = UI_UPDATE_STATE_RECOVERY;
+						break;
+					default:
+						updateState = UI_UPDATE_STATE_ERROE;
+				}
+				break;
+			case SDK_UPDATE_NSTEP_INVALID_IGNORED:
+				updateState = UI_UPDATE_STATE_NONE;
+				break;
+			default:
+				updateState = UI_UPDATE_STATE_NONE;
+		}
+
+	}else{
+		updateState = UI_UPDATE_STATE_ERROE;
+	}
+
+		return {state:updateState,process:processInfo};
+}
+
+function startGetFOTAUpgradeState(){
+	stopGetFOTAUpgradeState();
+	P_TIME_GET_FOTA_INFO = setTimeout(function(){
+		uiShowFOTAUpgradeState();
+	},4000);
+}
+
+function stopGetFOTAUpgradeState(){
+	if(P_TIME_GET_FOTA_INFO != null){
+		clearTimeout(P_TIME_GET_FOTA_INFO);
+		P_TIME_GET_FOTA_INFO = null;
+	}
+}
+
+function statrGetRestartRildResult(){
+	var resultInfo = SDK.requestJsonRpcSync("Update.GetFOTAUpgradeState",null,"22.9");
+	if(resultInfo.hasOwnProperty("error") && resultInfo.error.code == 6){
+		setTimeout(function(){
+			statrGetRestartRildResult();
+		},4000);
+	}else if(resultInfo.hasOwnProperty("result") && restartRildOk(resultInfo.result)){
+		sys.alert("<%:ids_update_updateCompleted%>",function(){
+			uiPageInit();
+		})	
+	}else{
+		sys.alert("<%:ids_update_updateFail%>",function(){
+			uiPageInit();
+		})
+	}
+
+	function restartRildOk(result){
+		return result.nStep == -1 && result.nStatus == -1 && result.nInfo == -1
+	}
+}
+
+function uiShowFOTADownProcess(process){
+	$("#download-process").html(process);
+	$("#download-box").show();
+}
+
+//check version function
+function uiSetFOTAStartCheckVersion(){
+	stopGetFOTAUpgradeState();
+	sys.prompt("<%:ids_update_checking%>",-1);
+	var fotaStateInfo = uiGetFotaUpdateState();
+	var updateState = fotaStateInfo.state;
+
+	if(updateState == UI_UPDATE_STATE_UPDATING || updateState == UI_UPDATE_STATE_RECOVERY){
+		uiShowFOTAUpgradeState();
+	}else{
+		if(SDK.WanConnection.GetConnectionState().ConnectionStatus != G_SDK_NETWORK_CONNCTION_CONNECTED){
+			sys.alert("<%:ids_update_InternetDisabledMsg%>");
+			return;
+		}
+		switch(updateState){
+			case UI_UPDATE_STATE_NONE:
+			case UI_UPDATE_STATE_CHECK_FAIL:
+			case UI_UPDATE_STATE_DOWNLOAD_FAIL:
+
+				var result = SDK.Update.SetFOTAStartCheckVersion();
+				if(result.error == 0){
+					uiShowFOTAUpgradeState();
+				}else{
+					sys.alert("<%:ids_failed%>",function(){
+						uiPageInit();
+					});
+				}
+				break;
+			/*
+			case UI_UPDATE_STATE_DOWNLOADING:
+				if(SDK.WanConnection.GetConnectionState().ConnectionStatus != G_SDK_NETWORK_CONNCTION_CONNECTED){
+					sys.alert("<%:ids_update_InternetDisabledMsg%>");
+					return;
+				}
+				sys.confirm("<%:ids_update_downloadConfirm%>",function(){
+					uiSetFOTAStartDownload();
+				});  
+				break;
+				*/
+			default:
+				uiShowFOTAUpgradeState();
+		}
+	}
+	
+}
+
+//start download function
+function uiSetFOTAStartDownload(){
+	stopGetFOTAUpgradeState();
+	if(SDK.WanConnection.GetConnectionState().ConnectionStatus != G_SDK_NETWORK_CONNCTION_CONNECTED){
+		sys.alert("<%:ids_update_InternetDisabledMsg%>");
+		return;
+	}
+
+	var result = SDK.Update.SetFOTAStartDownload();
+	if(result.error == 0){
+		popUp.hide();
+		showBoxItem("#downloading-box");
+		$("#download-process").css("visibility","visible").html("0%");
+		startGetFOTAUpgradeState();
+	}else{
+		sys.alert("<%:ids_failed%>",function(){
+			uiPageInit();
+		});
+	}
+}
+
+//stop download function
+function uiSetFOTADownloadStop(){
+	stopGetFOTAUpgradeState();
+	var result = SDK.Update.SetFOTADownloadStop();
+	if(result.error == 0){
+		sys.alert("<%:ids_update_downloadStopMsg%>",function(){
+			showBoxItem("#init-box");
+		});
+	}else{
+		sys.alert("<%:ids_failed%>",function(){
+			uiPageInit();
+		});
+	}
+}
+//start uptate function
+function uiSetDeviceStartUpdate(){
+	stopGetFOTAUpgradeState();
+	var result = SDK.Update.SetDeviceStartUpdate();
+	if(result.error == 0){	
+		sys.prompt("<%:ids_update_Updating%>",-1);
+		startGetFOTAUpgradeState();	
+	}else{
+		sys.alert("<%:ids_failed%>",function(){
+			uiPageInit();
+		});
+	}
+}
+
+function showBoxItem(id){
+	$(".box-item").hide();
+	$(id).show();
+}
+</script>
+<style>
+	.box-item{display: none;}
+</style>
+<div class="main-box border-notop">
+	<fieldset class="cbi-section pt20">
+		<div id="init-box" class="box-item">
+			<div class="text-center pt100">
+				<%:ids_update_checkBtnDescription%>
+			</div>
+			<div class="text-center pt20">
+	    	    <button class="btn btn-primary" onclick="uiSetFOTAStartCheckVersion()"><%:ids_update_check%></button>
+	    	</div>
+	    </div>
+
+
+	    <div id="downloading-box" class="box-item">
+			<div class="text-center pt100">
+				<%:ids_update_download%><br/>
+				<div id="download-box"><%:ids_update_process%>: <span id="download-process" style="visibility: hidden;"></span></div>
+			</div>
+			<div class="text-center pt20">
+	    	    <button class="btn btn-primary" onclick="uiSetFOTADownloadStop()"><%:ids_stop%></button>
+	    	</div>
+	    </div>
+	    <!--
+    	<div class="alert alert-error span10 offset1 mt20">
+			<%:ids_update_Description%>
+		</div>
+		-->
+	</fieldset>
+</div>
+<%+footer%>

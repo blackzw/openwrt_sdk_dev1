@@ -1,0 +1,44 @@
+# This file is interpreted as shell script.
+# Put your custom iptables rules here, they will
+# be executed with each firewall (re-)start.
+
+# Internal uci firewall chains are flushed and recreated on reload, so
+# put custom rules into the root chains e.g. INPUT or FORWARD or into the
+# special user chains, e.g. input_wan_rule or postrouting_lan_rule.
+
+. /lib/functions.sh 
+
+config_load dmz 
+
+local enable
+
+local dest_ip
+
+local enabled_wanping
+
+local lan_ip
+
+local netmask
+
+config_get enable dmz enable
+config_get dest_ip dmz  dest_ip 
+
+if [ $enable -eq 1 ] ; then
+	iptables -D zone_wan_forward -j zone_wan_src_REJECT
+ 	iptables -t nat -A zone_wan_prerouting ! -p icmp -j DNAT --to-destination $dest_ip
+ 	iptables -A zone_wan_forward ! -p icmp -d $dest_ip  -j ACCEPT 
+	iptables -A zone_wan_forward -j zone_wan_src_REJECT
+fi
+ 
+
+config_load firewall
+config_get enabled_wanping wanping enabled
+
+
+config_load network
+config_get lan_ip lan ipaddr
+config_get netmask lan netmask
+
+if [ $enabled_wanping -eq 1 ] ; then
+	iptables -A input_rule ! -d $lan_ip ! -s $lan_ip/$netmask -p icmp --icmp-type echo-request -j DROP
+fi

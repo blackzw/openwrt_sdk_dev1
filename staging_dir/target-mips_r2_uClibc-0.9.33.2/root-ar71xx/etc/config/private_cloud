@@ -1,0 +1,2 @@
+config private_cloud
+	option path '/mnt/usb'

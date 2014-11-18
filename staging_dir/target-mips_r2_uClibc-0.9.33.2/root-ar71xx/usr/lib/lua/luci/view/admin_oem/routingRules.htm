@@ -1,0 +1,669 @@
+<%+header%>
+<script>
+	$(function($)
+	{
+		uiPageInit();
+	})
+	/* Global */
+	var G_SDK_ROUTER_STATE_ENABLE = 1;
+	var G_SDK_ROUTER_STATE_DISABLE = 0;
+	var staticConfigList, staticRouterStatus;
+	var dyRipState,dyRipVerion;
+	var subnetEle = [0,128,192,224,240,248,252,254,255];
+
+	var operatorName;
+	var addConfigId;
+	var baseHref_all = "<%=REQUEST_URI%>";
+
+
+	function uiPageInit()
+	{
+		initGlobleParam();
+		formload();
+		initStaticPart();
+		initDynamicPart();
+	}
+	function initGlobleParam()
+	{
+		 staticConfigList = [];
+		 staticRouterStatus = 0;
+		 dyRipState = 0;
+		 dyRipVerion = 0;
+		 operatorName = 0;
+		 addConfigId = 0;
+	}
+	function initStaticPart()
+	{
+		var $staticRouterStatus = $("#static_router_State").show();
+		//var staticConfigList, staticRouterStatus;
+		/* five button init */
+		var $btnAdd = $("#btnAdd");
+		var $btnDelete = $("#btnDelete");
+		var $btnEdit = $("#btnEdit");
+		var $static_btnApply = $("#static_btnApply");
+		var $static_btnCancel = $("#static_btnCancel");
+		$btnDelete.setBtnDisabled();
+		$btnEdit.setBtnDisabled();
+		$btnAdd.removeBtnDisabled();
+		$static_btnApply.setBtnDisabled();
+		$static_btnCancel.setBtnDisabled();
+
+		$static_btnCancel.click(function()
+		{
+			location.href = baseHref_all;
+		});
+
+		$btnAdd.click(AddApply);
+		$btnDelete.click(DeleteApply);
+		$btnEdit.click(EditApply);
+		$static_btnApply.click(SaveApply);
+
+		/* routerStatus init */
+		if (staticRouterStatus == null || staticRouterStatus == "")
+		{
+			staticRouterStatus = 0;
+		}
+		showSwitchStatus($staticRouterStatus, staticRouterStatus, G_SDK_ROUTER_STATE_ENABLE);
+
+		if (staticConfigList != null && staticConfigList.length != 0)
+		{
+			showServerConfigItem(staticConfigList);
+		}
+
+		/* checkBox init */
+		$("input[name='ckbAllconfig']").attr("disabled",false).change(function()
+		{
+			if ($(this).attr("checked") == "checked")
+			{
+				$("input[name='ckbsingleconfig']").each(function()
+				{
+					$(this).attr("checked", "checked");
+				});
+			} else
+			{
+				$("input[name='ckbsingleconfig']").each(function()
+				{
+					$(this).attr("checked", null);
+				});
+			}
+			listenMark();
+		});
+		$("input[name='ckbAllconfig']").attr("checked", null);
+
+		$("input[name='ckbsingleconfig']").change(function()
+		{
+			listenMark();
+		});
+
+		$("table input:[type=text]").prop("readonly", true);
+		$("table select").attr("disabled", true);
+	}
+	function initDynamicPart()
+	{
+
+		/* routerStatus init */
+		
+		if (dyRipState == 1)
+		{
+			$("#dynamicRouting-map input[name=ripState]").attr("checked", true);
+		} else
+		{
+			$("#dynamicRouting-map input[name=ripState]").attr("checked", false);
+		}
+		$("#selRoutingVersion").val(dyRipVerion);
+		/* five button init */
+		var $dy_btnApply = $("#dy_btnApply");
+		var $dy_btnCancel = $("#dy_btnCancel");
+		$dy_btnApply.setBtnDisabled();
+		$dy_btnCancel.setBtnDisabled();
+		
+		$("#dynamicRouting-map input[type='checkbox'],#dynamicRouting-map select").bind("input change keyup keydown paste", function()
+		{
+			$("#dy_btnCancel,#dy_btnApply").removeBtnDisabled();
+		});
+		$dy_btnCancel.click(function()
+		{
+			location.href = baseHref_all;
+		});
+
+		$dy_btnApply.click(dyApply);
+	}
+	function formload()
+	{
+		var staticConfigInfo = SDK.RoutingRules.GetStaticRouting();
+		if (!staticConfigInfo.hasOwnProperty("error"))
+		{
+			staticRouterStatus = staticConfigInfo.result.State;
+			staticConfigList = staticConfigInfo.result.StaticRoutingList;
+		}
+		var dyConfigInfo = SDK.RoutingRules.GetDynamicRouting();
+		if (!dyConfigInfo.hasOwnProperty("error"))
+		{
+			dyRipState = dyConfigInfo.result.RipState;
+			dyRipVerion = dyConfigInfo.result.RipVerion;
+		}
+	}
+	function showServerConfigItem(staticConfigList)
+	{
+		if (staticConfigList != null)
+		{
+			for ( var e in staticConfigList)
+			{
+				var itemConfig = staticConfigList[e];
+				if (itemConfig != "")
+				{
+					addconfigItem(itemConfig);
+				}
+			}
+		}
+	}
+
+	function addconfigItem(itemConfig)
+	{
+		
+		var _item_Id = itemConfig.Id, _item_DestNetAddr = itemConfig.DestNetAddr, _item_DestNetmask = itemConfig.DestNetmask,_item_GateWay = itemConfig.GateWay;
+		_tiem_sourceNetAddr = itemConfig.SourceNetAddr || "";_item_sourceNetmask = itemConfig.SourceNetmask || "";_item_ruleInterface = itemConfig.Interface || 0;_item_metric = itemConfig.Metric || 0;_item_mtu = itemConfig.MTU || 0;_item_type=itemConfig.Type || 0;
+		var itemTable = $("#serverConfigTable");
+		var itemStr = "";
+		itemStr = "<td><span class=rounterId>"+_item_Id+"</span>"+
+		"<input type=hidden class=SourceNetAddr value="+_tiem_sourceNetAddr+" />"+
+		"<input type=hidden class=SourceNetmask value="+_item_sourceNetmask+" />"+
+		"<input type=hidden class=Interface value="+_item_ruleInterface+" />"+
+		"<input type=hidden class=Metric value="+_item_metric+" />"+
+		"<input type=hidden class=MTU value="+_item_mtu+" />"+
+		"<input type=hidden class=Type value="+_item_type+" /> "+ 
+		"<td><input type=text class=DestNetAddr value="+_item_DestNetAddr+" /></td>" + 
+		"<td><input type=text class=DestNetmask value="+_item_DestNetmask+" /></td>" + 
+		"<td><input type=text class=GateWay value="+_item_GateWay+" /></td>" + 
+		"<td><input type=checkbox name=ckbsingleconfig value="+_item_Id+" /></td>";
+		itemTable.append("<tr class=singleConfig_" + _item_Id +">" + itemStr + "</tr>");
+	}
+
+	function AddApply()
+	{
+		operatorName = 1;
+		addConfigId = $("#serverConfigTable tr").length;
+		$("#btnDelete,#btnEdit").setBtnDisabled();
+		$("#static_btnApply,#static_btnCancel").removeBtnDisabled();
+		$("input[name=ckbsingleconfig]").attr("checked",false).attr("disabled",true);
+		$("input[name=ckbAllconfig]").attr("checked",false).attr("disabled",true);
+		var itemTable = $("#serverConfigTable");
+		var itemStr = "";
+		itemStr = "<td><span class=rounterId>"+addConfigId+"</span></td>" + 
+		"<td><input type=text class=DestNetAddr  /></td>" + 
+		"<td><input type=text class=DestNetmask  /></td>" + 
+		"<td><input type=text class=GateWay  /></td>" + 
+		"<td><input type=checkbox name=ckbsingleconfig disabled=true value="+addConfigId+" /></td>";
+		itemTable.append("<tr class=singleConfig_" + addConfigId +">" + itemStr + "</tr>");
+
+	}
+
+	function EditApply()
+	{
+		operatorName = 2;
+		$("#btnDelete,#btnAdd").setBtnDisabled();
+		$("#static_btnApply,#static_btnCancel").removeBtnDisabled();
+		$("input[name='ckbAllconfig']").attr("disabled", true);
+		$("input[name='ckbsingleconfig']:checked").each(function()
+		{
+			var that = $(this);
+			that.attr("disabled", true);
+			var editConfigId = that.val();
+			$(".singleConfig_" + editConfigId + " input[type=text]").prop("readOnly", false);
+			$(".singleConfig_" + editConfigId + " select").attr("disabled", false);
+		})
+	}
+
+	function DeleteApply()
+	{
+		operatorName = 3;
+		$("#btnEdit,#btnAdd").setBtnDisabled();
+		$("#static_btnApply,#static_btnCancel").removeBtnDisabled();
+		$("input[name='ckbsingleconfig']:checked").each(function()
+		{
+				var that = $(this);
+				that.attr("disabled", true);
+				var deleteConfigId = that.val();
+				$("table tr").remove(".singleConfig_" + deleteConfigId);
+		})
+		listenMark();
+
+	}
+	
+	function SaveApply()
+	{
+		var params = getStaticRouterParam();
+		if(params.hasOwnProperty("error") || params == null)
+		{
+			return;
+		}
+		var checkResult;
+		var staticConfigList = params.StaticRoutingList;
+		if (staticConfigList.length>0)
+		{
+			for(var i = 0;i<staticConfigList.length;i++)
+			{
+				checkResult = checkParamInvalid(staticConfigList[i]);
+				if (checkResult == 0)
+				{
+					staticConfigList[i].Id = i+1;
+					continue;
+				}else
+				{
+					var warnClassName="";
+					switch (checkResult)
+					{
+					case 1:
+						warnClassName = "DestNetAddr";
+						sys.alert("<%:ids_router_desIpInvalid%>")
+						break;
+					case 2:
+						warnClassName = "DestNetmask";
+						sys.alert("<%:ids_router_subnetInvalid%>")
+						break;
+					case 3:
+						warnClassName = "GateWay";
+						sys.alert("<%:ids_router_rooterIpInvalid%>")
+						break;
+					default:
+						warnClassName = "param";
+						sys.alert("<%:ids_vtServer_paramsInvalid%>");
+						break;
+					}
+					$(".singleConfig_"+staticConfigList[i].Id+" ."+warnClassName).addClass("input-error").focus(function()
+					{
+						$(".singleConfig_"+staticConfigList[i].Id+" ."+warnClassName).removeClass("input-error");
+					});
+					return;
+				}
+			}
+		}
+		var result = SDK.RoutingRules.SetStaticRouting(params.State,params.StaticRoutingList).error;
+		if (result == API_RESULT_SUCCESS)
+		{
+			sys.alert("<%:ids_succeeded%>", function()
+			{
+				location.href = baseHref_all;
+			});
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#static_btnApply,#static_btnCancel").setBtnDisabled();
+			});
+		}
+		
+	}
+	
+	function dyApply()
+	{
+		var params = getDyRouterParam();
+		var result = SDK.RoutingRules.SetDynamicRouting(params.RipState,params.RipVerion).error;
+		if (result == API_RESULT_SUCCESS)
+		{
+			sys.alert("<%:ids_succeeded%>", function()
+			{
+				location.href = baseHref_all;
+			});
+		} else
+		{
+			sys.alert("<%:ids_failed%>", function()
+			{
+				$("#static_btnApply,#static_btnCancel").setBtnDisabled();
+			});
+		}
+		
+	}
+
+	/* Util */
+	function getStaticRouterParam()
+	{
+		var param;
+		var ServerConfigList = [];
+		staticRouterStatus = $("#static_router_State").is(":checked") ? 1 : 0;
+		if (staticRouterStatus !=0 && staticRouterStatus != 1)
+		{
+			return {"error":0};
+		}
+		if($("table tr").size() > 1)
+		{
+			$("table tr").each(function(i)
+			{
+				if (i > 0)
+				{
+				
+					var that = $(this);
+					var singleConfig = {
+						"Id":parseInt(that.find(".rounterId").html()), 
+						"DestNetAddr":$.trim(that.find(".DestNetAddr").val()),
+						"DestNetmask":$.trim(that.find(".DestNetmask").val()),
+						"GateWay": $.trim(that.find(".GateWay").val()),
+						"SourceNetAddr": $.trim(that.find(".SourceNetAddr").val()),
+						"SourceNetmask": $.trim(that.find(".DestNetAddr").val()),
+						"Interface": parseInt(that.find(".Interface").val()), 
+						"Metric": parseInt(that.find(".Metric").val()), 
+						"MTU": parseInt(that.find(".MTU").val()), 
+						"Type":parseInt(that.find(".Type").val())
+
+					}
+					ServerConfigList.push(singleConfig);
+				}
+			})
+		}
+		param = {
+			"State" :staticRouterStatus,
+			"StaticRoutingList" : ServerConfigList
+		}
+		return param;
+	}
+	function getDyRouterParam()
+	{
+		var param;
+		param = {
+			"RipState": $("#dynamicRoutingContent input[name=ripState]").is(":checked") ? 1 : 0,
+			"RipVerion": parseInt($("#selRoutingVersion").val())
+		}
+		return param;
+	}
+
+
+/* 	0.OK 1.DestNetAddr 1 	2.DestNetmask 	3.GateWay */
+	function checkParamInvalid(param)
+	{
+		if (param.hasOwnProperty("Id") && param.hasOwnProperty("DestNetAddr") && param.hasOwnProperty("DestNetmask") && param.hasOwnProperty("GateWay"))
+		{
+			if (!cbi_validators.integer.apply(""+param.Id))
+			{
+				return 4;
+			}
+			if (!cbi_validators.ip4addr.apply(param.DestNetAddr))
+			{
+				return 1;
+			}
+			if (!isValidSubnetMask(param.DestNetmask))
+			{
+				return 2;
+			}
+			if (!cbi_validators.ip4addr.apply(param.GateWay))
+			{
+				return 3;
+			}
+			if(!checkInvalidateDestNet(param.DestNetAddr,param.DestNetmask))
+			{
+				return 2;
+			}
+			return 0;
+		}else {
+			return 4
+		}
+		
+		
+	}
+	function showSwitchStatus($CheckedState, InitStateValue, STATE_ENABLE)
+	{
+		var CheckedState = $CheckedState.is(":checked");
+		var $hasSwitch = $CheckedState.parent();
+		$hasSwitch.addClass("has-switch");
+		if (InitStateValue == STATE_ENABLE)
+		{
+			CheckedState = true;
+		} else
+		{
+			CheckedState = false;
+		}
+		if (CheckedState == true)
+		{
+			$hasSwitch.removeClass("switch-off").addClass("switch-on");
+			$CheckedState.attr("checked", true);
+		} else
+		{
+			$hasSwitch.removeClass("switch-on").addClass("switch-off");
+			$CheckedState.attr("checked", false);
+		}
+		$hasSwitch.click(function()
+		{
+			var $divPart = $hasSwitch.parent().parent();
+			$divPart.find(".text-center button").removeBtnDisabled();
+			//$divPart.find(".border-notop").show();
+			if (CheckedState == true)
+			{
+				$hasSwitch.removeClass("switch-on").addClass("switch-off");
+				CheckedState = false;
+				$CheckedState.attr("checked", false);
+			} else
+			{
+				$hasSwitch.removeClass("switch-off").addClass("switch-on");
+				CheckedState = true;
+				$CheckedState.attr("checked", true);
+			}
+		});
+	}
+	function checkInvalidateDestNet(deIp,deMask)
+	{
+		if (deMask == '0.0.0.0') 
+		{
+		    return true;
+		}
+
+	    if (deIp == '0.0.0.0') 
+	    {
+	        return true;
+	    }
+		var maskParts = deMask.split('.');
+		var ipParts = deIp.split('.');
+		if (ipParts[3] != 0 && maskParts[3] == 255)
+		{
+			return true;
+		}
+		//C class
+		if (ipParts[3] == 0 && ipParts[2] != 0 && maskParts[2] != 0)
+		{
+			var ipPartsNum = parseInt(ipParts[2]);
+			var maskPartsNum = parseInt(maskParts[2]);
+			if((maskPartsNum | ipPartsNum)== maskPartsNum)
+			{
+				return true;	
+			}
+		}
+		//B class
+		if (ipParts[3] == 0 && ipParts[2] == 0 && ipParts[1] != 0 &&   maskParts[1] != 0)
+		{
+			var ipPartsNum = parseInt(ipParts[1]);
+			var maskPartsNum = parseInt(maskParts[1]);
+			if((maskPartsNum | ipPartsNum)== maskPartsNum)
+			{
+				return true;	
+			}
+		}
+		//A class
+		if (ipParts[3] == 0 && ipParts[2] == 0 && ipParts[1] == 0 && ipParts[0] != 0 && maskParts[0] != 0)
+		{
+			var ipPartsNum = parseInt(ipParts[0]);
+			var maskPartsNum = parseInt(maskParts[0]);
+			if((maskPartsNum | ipPartsNum)== maskPartsNum)
+			{
+				return true;	
+			}
+		}
+		
+		return false;
+	}
+	function isValidSubnetMask(mask) {
+	    var i = 0;
+	    var num = 0;
+	    if (mask == '0.0.0.0') {
+	        return true;
+	    }
+
+	    if (mask == '255.255.255.255') {
+	        return true;
+	    }
+
+	    var maskParts = mask.split('.');
+	    if (maskParts.length != 4) {
+	        return false;
+	    }
+
+	    for (i = 0; i < 4; i++) {
+	        if (isNaN(maskParts[i]) == true) {
+	            return false;
+	        }
+	        if (maskParts[i] == '') {
+	            return false;
+	        }
+	        if (maskParts[i].indexOf(' ') != -1) {
+	            return false;
+	        }
+
+	        if ((maskParts[i].indexOf('0') == 0) && (maskParts[i].length != 1)) {
+	            return false;
+	        }
+
+	        num = parseInt(maskParts[i]);
+	        if (num < 0 || num > 255) {
+	            return false;
+	        }
+	        if($.inArray(num,subnetEle) == -1){
+	        	return false;
+	        }
+	    }
+	    if (maskParts[0] != 255 && (maskParts[1] != 0 || maskParts[2] != 0 || maskParts[3] != 0))
+		{
+			return false;
+		}
+	    if (maskParts[1] != 255 && (maskParts[2] != 0 || maskParts[3] != 0 ))
+		{
+			return false;
+		}
+	    if (maskParts[2] != 255 && maskParts[3] != 0)
+		{
+			return false;
+		}
+	    return true;
+	}
+	function checkStausInvalid(status)
+	{
+		if (status == 0 || status == 1)
+		{
+			return true;
+		} else
+		{
+			return false;
+		}
+	}
+
+	function listenMark()
+	{
+		var $ckbConfig = $("input[name='ckbsingleconfig']");
+		var ckbConfigLeng = $ckbConfig.length;
+		var $ckbConfigChecked = $("input[name='ckbsingleconfig']:checked");
+		var ckbConfigCheckedLeng = $ckbConfigChecked.length;
+		var $ckbSelectAllConfig = $("input[name='ckbAllconfig']");
+		if (ckbConfigLeng > 0 && ckbConfigCheckedLeng == ckbConfigLeng)
+		{
+			$ckbSelectAllConfig.attr("checked", true);
+		} else
+		{
+			$ckbSelectAllConfig.attr("checked", false);
+		}
+
+		if (ckbConfigCheckedLeng == 0)
+		{
+			$("#btnDelete").setBtnDisabled();
+			$("#btnEdit").setBtnDisabled();
+		} else
+		{
+			if (operatorName == 0)
+			{
+				$("#btnDelete").removeBtnDisabled();
+				$("#btnEdit").removeBtnDisabled();
+
+			} else if (operatorName == 1)
+			{
+				$("#btnDelete").setBtnDisabled();
+				$("#btnEdit").setBtnDisabled();
+				$("#btnAdd").removeBtnDisabled();
+			} else if (operatorName == 2)
+			{
+				$("#btnDelete").setBtnDisabled();
+				$("#btnAdd").setBtnDisabled();
+				$("#btnEdit").removeBtnDisabled();
+			} else if (operatorName == 3)
+			{
+				$("#btnAdd").setBtnDisabled();
+				$("#btnEdit").setBtnDisabled();
+				$("#btnDelete").removeBtnDisabled();
+			} else
+			{
+				$("#btnAdd").setBtnDisabled();
+				$("#btnDelete").setBtnDisabled();
+				$("#btnEdit").setBtnDisabled();
+			}
+		}
+	}
+</script>
+
+<div id="router_page_map" class="main-box border-notop form-horizontal">
+	<div id="staticRouter-map" class="mb20">
+		<div class="title-switch-checkbox border-all">
+			<h4 class="pull-left"><%:ids_router_titleStaticRouting%></h4>
+			<div class="switch-checkbox-right">
+				<input id="static_router_State" name="staticRouter-status-value" type="checkbox" style="display:none;"/>
+			</div>
+		</div>
+		<div class="border-notop" id="static_content">
+			<div class="text-right mb20">
+				<button class="btn btn-primary" id="btnAdd"><%:ids_add%></button>
+				<button class="btn btn-primary" id="btnEdit"><%:ids_edit%></button>
+				<button class="btn btn-primary" id="btnDelete"><%:ids_delete%></button>
+			</div>
+			<table class="table table-striped table-hover table-tc border-notop" id="serverConfigTable">
+				<tr>
+					<th width="15%"><%:ids_index%></th>
+					<th width="23%"><%:ids_router_desIp%></th>
+					<th width="23%"><%:ids_subnetMark%></th>
+					<th width="23%"><%:ids_router_rounterIp%></th>
+					<th width="15%"><input type="checkbox" name="ckbAllconfig" /></th>
+				</tr>
+			</table>
+			<div class="text-center">
+				<button class="btn btn-primary" id="static_btnApply"><%:ids_apply%></button>
+				<button class="btn btn-primary" id="static_btnCancel"><%:ids_cancel%></button>
+			</div>
+		</div>
+	</div>
+
+	<div id="dynamicRouting-map" class="mb20">
+		<div class="title-switch-checkbox border-all">
+			<h4 class="pull-left"><%:ids_router_titleDynamicRouting%></h4>
+		</div>
+		<div class="border-notop" id="dynamicRoutingContent">
+			<div class="control-group">
+				<label class="control-label"><%:ids_router_rip%>:</label>
+				<div class="controls">
+					<label class="checkbox inline"> <input type="checkbox" name="ripState" value="0" /><%:ids_enable%>
+					</label>
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label"><%:ids_verison%>:</label>
+				<div class="controls">
+					<select id="selRoutingVersion" size="1">
+						<option value="0"><%:ids_router_ripV1V2%></option>
+						<option value="1"><%:ids_router_ripV1%></option>
+						<option value="2"><%:ids_router_ripV2%></option>
+					</select>
+				</div>
+			</div>
+			<div class="text-center">
+				<button class="btn btn-primary" id="dy_btnApply"><%:ids_apply%></button>
+				<button class="btn btn-primary" id="dy_btnCancel"><%:ids_cancel%></button>
+			</div>
+		</div>
+	</div>
+</div>
+<div id="mask">
+	<iframe id="maskIframe"></iframe>
+</div>
+<div id="loading"></div>
+<%+footer%>

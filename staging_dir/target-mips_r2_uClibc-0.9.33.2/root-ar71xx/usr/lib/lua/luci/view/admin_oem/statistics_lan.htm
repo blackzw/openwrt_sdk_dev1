@@ -1,0 +1,48 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+
+function uiPageInit(){
+	uiShowLanStatistics();
+}
+
+function uiShowLanStatistics() {
+	var lanStatisticsInfo = SDK.LAN.GetLanStatistics();
+	var htmlStr="";
+	
+	if(!lanStatisticsInfo.hasOwnProperty("error")){
+		lanStatistics = lanStatisticsInfo.List;
+		$.each(lanStatistics,function(i,v){
+			htmlStr+="<tr><td>"+v.LanFlag+"</td><td>"+sys.covertNum(v.ReceivedByte)+"</td><td>"+sys.covertNum(v.ReceivedPacket)+"</td><td>"+sys.covertNum(v.ReceivedError)+"</td><td>"+sys.covertNum(v.ReceivedDiscarded)+"</td><td>"+sys.covertNum(v.SentByte)+"</td><td>"+sys.covertNum(v.SentPacket)+"</td><td>"+sys.covertNum(v.SentError)+"</td><td>"+sys.covertNum(v.SentDiscarded)+"</td></tr>"
+		});
+		$("#lan-statistic-list").html(htmlStr);
+	}
+}
+</script>
+<div class="main-box border-notop">
+
+	<fieldset class="cbi-section">
+		<table class="table table-bordered table-tc">
+			<tr>
+				<th rowspan="2"><%:ids_lan_interface%></th>
+				<th colspan="4"><%:ids_lan_received%></th>
+				<th colspan="4"><%:ids_sent%></th>
+			</tr>
+			<tr>
+				<th><%:ids_byte%></th>
+				<th><%:ids_packet%></th>
+				<th><%:ids_error%></th>
+				<th><%:ids_discarded%></th>
+				<th><%:ids_byte%></th>
+				<th><%:ids_packet%></th>
+				<th><%:ids_error%></th>
+				<th><%:ids_discarded%></th>
+			</tr>
+			<tbody id="lan-statistic-list">
+			</tbody>
+		</table>
+	</fieldset>
+</div>
+<%+footer%>

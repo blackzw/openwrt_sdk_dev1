@@ -1,0 +1,71 @@
+<%#
+LuCI - Lua Configuration Interface
+Copyright 2008 Steven Barth <steven@midlink.org>
+Copyright 2008-2011 Jo-Philipp Wich <xm@subsignal.org>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+-%>
+
+<%+header%>
+
+<script type="text/javascript" src="<%=resource%>/cbi.js"></script>
+
+<h2><a id="content" name="content"><%:Status%></a></h2>
+
+<fieldset class="cbi-section">
+	<legend><%:SIM Card Status%></legend>
+
+	<table width="100%" cellspacing="10">
+		<tr><td width="33%"><%:SIM Card Ready%></td><td></td></tr>
+		<tr><td width="33%"><%:PIN Required%></td><td></td></tr>
+		<tr><td width="33%"><%:PUK Required%></td><td></td></tr>
+	</table>
+</fieldset>
+
+<fieldset class="cbi-section">
+	<legend><%:WAN Status%></legend>
+
+	<table width="100%" cellspacing="10">
+	  <tr><td width="33%"><%:Network Status%></td><td id="memtotal">Connected</td></tr>
+		<tr><td width="33%"><%:Network Name%></td><td id="memtotal">China mobile</td></tr>
+		<tr><td width="33%"><%:Network Type%></td><td id="memfree">GPRS</td></tr>
+		<tr><td width="33%"><%:IP Address%></td><td id="memcache">202.71.25.21</td></tr>
+		<tr><td width="33%"><%:Connection Time%></td><td id="membuff">20</td></tr>
+	</table>
+</fieldset>
+
+<fieldset class="cbi-section">
+	<legend><%:System Information%></legend>
+
+	<table width="100%" cellspacing="10">
+	  <tr><td width="33%"><%:Device Name%></td><td id="memtotal">CPE_H850</td></tr>
+		<tr><td width="33%"><%:Gate Way%></td><td id="memtotal">China mobile</td></tr>
+		<tr><td width="33%"><%:Hardware Vesion%></td><td id="memfree">1.0</td></tr>
+		<tr><td width="33%"><%:Software Version%></td><td id="memcache">1.0</td></tr>
+	</table>
+</fieldset>
+
+<fieldset class="cbi-section">
+	<legend><%:Wlan client Information%></legend>
+
+	<table class="cbi-section-table" id="lease_status_table">
+		<tr class="cbi-section-table-titles">
+			<th class="cbi-section-table-cell"><%:Mac Address%></th>
+			<th class="cbi-section-table-cell"><%:IP Address%></th>
+			<th class="cbi-section-table-cell"><%:Host Name%></th>
+			<th class="cbi-section-table-cell"><%:Connection Time%></th>
+		</tr>
+		<tr class="cbi-section-table-row">
+			<td colspan="4"><em><br /><%:Collecting data...%></em></td>
+		</tr>
+	</table>
+</fieldset>
+
+	</table>
+</fieldset>
+<%+footer%>

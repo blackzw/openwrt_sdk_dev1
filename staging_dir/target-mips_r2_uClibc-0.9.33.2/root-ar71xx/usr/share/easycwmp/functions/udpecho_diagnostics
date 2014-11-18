@@ -1,0 +1,590 @@
+#!/bin/sh
+
+udp_diag_result_file="/tmp/udp_echo_service_result.log"
+
+restart_udpecho_service()
+{
+	/etc/init.d/udpechoserviced restart
+}
+
+get_udpechoconfig_enable()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.Enable"
+	local permissions="1"	
+	local type="xsd:boolean"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UdpEchoConfig[0].Enable 2> /dev/null`
+		[ "$val" = "1" ] && val="true" || val="false"		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_udpechoconfig_enable()
+{
+	local parm="InternetGatewayDevice.UDPEchoConfig.Enable"
+	local val="$1"
+	case $action in
+		set_value)
+		[ "$val" = "true" ] && val="1" || val="0"
+		$UCI_SET easycwmp.@UdpEchoConfig[0].Enable="$val"
+		easycwmp_config_load
+		restart_udpecho_service
+
+		local __uci_iface=`$UCI_SHOW firewall | grep "firewall\.@rule\[[0-9]\+\].name=UDPEcho" | head -1 | cut -d'.' -f2`	
+		[ "$__uci_iface" = "" ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET firewall.$__uci_iface.enabled="$val"
+		$UCI_COMMIT firewall
+		`/etc/init.d/firewall restart > /dev/null 2>&1 &`	
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_udpechoconfig_interface()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.Interface"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UdpEchoConfig[0].Interface 2> /dev/null`
+		case "$val" in
+			usb0)
+			val="$default_wan_interface"
+			;;
+			br-lan)
+			val="$default_lan_interface"
+			;;
+			*)
+			val=""
+			;;
+		esac
+		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_udpechoconfig_interface()
+{
+	local parm="InternetGatewayDevice.UDPEchoConfig.Interface"
+	local val="$1"
+	case $action in
+		set_value)
+		case "$val" in
+			$default_wan_interface)
+			val="usb0"
+			;;
+			$default_lan_interface)
+			val="br-lan"
+			;;
+			*)
+			val=""
+			;;
+		esac
+		$UCI_SET easycwmp.@UdpEchoConfig[0].Interface="$val"
+		easycwmp_config_load
+		restart_udpecho_service
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_udpechoconfig_src_addr()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.SourceIPAddress"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UdpEchoConfig[0].SourceIPAddress 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_udpechoconfig_src_addr()
+{
+	local parm="InternetGatewayDevice.UDPEchoConfig.SourceIPAddress"
+	local val="$1"
+	case $action in
+		set_value)		
+		$UCI_SET easycwmp.@UdpEchoConfig[0].SourceIPAddress="$val"
+		easycwmp_config_load
+		restart_udpecho_service
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_udpechoconfig_udpport()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.UDPPort"
+	local permissions="1"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UdpEchoConfig[0].UDPPort 2> /dev/null`
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_udpechoconfig_udpport()
+{
+	local parm="InternetGatewayDevice.UDPEchoConfig.UDPPort"
+	local val="$1"
+	case $action in
+		set_value)		
+		$UCI_SET easycwmp.@UdpEchoConfig[0].UDPPort="$val"
+		easycwmp_config_load
+		restart_udpecho_service
+
+		local __uci_iface=`$UCI_SHOW firewall | grep "firewall\.@rule\[[0-9]\+\].name=UDPEcho" | head -1 | cut -d'.' -f2`	
+		[ "$__uci_iface" = "" ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET firewall.$__uci_iface.dest_port="$val"
+		$UCI_COMMIT firewall
+		`/etc/init.d/firewall restart > /dev/null 2>&1 &`	
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_udpechoconfig_plus_enable()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.EchoPlusEnabled"
+	local permissions="1"	
+	local type="xsd:boolean"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UdpEchoConfig[0].EchoPlusEnabled 2> /dev/null`
+		[ "$val" = "1" ] && val="true" || val="false"	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+set_udpechoconfig_plus_enable()
+{
+	local parm="InternetGatewayDevice.UDPEchoConfig.EchoPlusEnabled"
+	local val="$1"
+	case $action in
+		set_value)
+		[ "$val" = "true" ] && val="1" || val="0"
+		$UCI_SET easycwmp.@UdpEchoConfig[0].EchoPlusEnabled="$val"
+		easycwmp_config_load
+		restart_udpecho_service
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_udpechoconfig_plus_support()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.EchoPlusSupported"
+	local permissions="0"	
+	local type="xsd:boolean"
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@UdpEchoConfig[0].EchoPlusSupported 2> /dev/null`
+		[ "$val" = "1" ] && val="true" || val="false"	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpechoconfig_packets_received()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.PacketsReceived"
+	local permissions="0"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		if [ ! -e "$udp_diag_result_file" ]; then
+			val="0"
+		else			
+			val=`cat $udp_diag_result_file | awk '{print $1}'`		
+			[ -z "$val" ] && val="0"
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpechoconfig_packets_responded()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.PacketsResponded"
+	local permissions="0"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		if [ ! -e "$udp_diag_result_file" ]; then
+			val="0"
+		else			
+			val=`cat $udp_diag_result_file | awk '{print $2}'`		
+			[ -z "$val" ] && val="0"
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpechoconfig_bytes_received()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.BytesReceived"
+	local permissions="0"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		if [ ! -e "$udp_diag_result_file" ]; then
+			val="0"
+		else			
+			val=`cat $udp_diag_result_file | awk '{print $3}'`		
+			[ -z "$val" ] && val="0"
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpechoconfig_bytes_responded()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.BytesResponded"
+	local permissions="0"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		if [ ! -e "$udp_diag_result_file" ]; then
+			val="0"
+		else			
+			val=`cat $udp_diag_result_file | awk '{print $4}'`		
+			[ -z "$val" ] && val="0"
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpechoconfig_time_first_packet_received()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.TimeFirstPacketReceived"
+	local permissions="0"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		if [ ! -e "$udp_diag_result_file" ]; then
+			val="0"
+		else			
+			val=`cat $udp_diag_result_file | awk '{print $5}'`		
+			[ -z "$val" ] && val="0"
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpechoconfig_time_last_packet_received()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.UDPEchoConfig.TimeLastPacketReceived"
+	local permissions="0"	
+	local type="xsd:unsignedInt"
+	case "$action" in
+		get_value)
+		if [ ! -e "$udp_diag_result_file" ]; then
+			val="0"
+		else			
+			val=`cat $udp_diag_result_file | awk '{print $6}'`		
+			[ -z "$val" ] && val="0"
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions" "$type"
+	return 0
+}
+
+get_udpecho_diagnostics_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.UDPEchoConfig." "" "0"
+	;;
+esac
+}
+
+get_udpecho_diagnostics() {
+case "$1" in
+	InternetGatewayDevice.)
+	get_udpecho_diagnostics_object 0
+	get_udpechoconfig_enable "$2"
+	get_udpechoconfig_interface "$2"
+	get_udpechoconfig_src_addr "$2"
+	get_udpechoconfig_udpport "$2"
+	get_udpechoconfig_plus_enable "$2"
+	get_udpechoconfig_plus_support "$2"
+	get_udpechoconfig_packets_received "$2"
+	get_udpechoconfig_packets_responded "$2"
+	get_udpechoconfig_bytes_received "$2"
+	get_udpechoconfig_bytes_responded "$2"	
+	get_udpechoconfig_time_first_packet_received "$2"
+	get_udpechoconfig_time_last_packet_received "$2"
+	return 0
+	;;
+	InternetGatewayDevice.UDPEchoConfig.)
+	get_udpecho_diagnostics_object "$2"
+	get_udpechoconfig_enable 0
+	get_udpechoconfig_interface 0
+	get_udpechoconfig_src_addr 0
+	get_udpechoconfig_udpport 0
+	get_udpechoconfig_plus_enable 0
+	get_udpechoconfig_plus_support 0
+	get_udpechoconfig_packets_received 0
+	get_udpechoconfig_packets_responded 0
+	get_udpechoconfig_bytes_received 0
+	get_udpechoconfig_bytes_responded 0	
+	get_udpechoconfig_time_first_packet_received 0
+	get_udpechoconfig_time_last_packet_received 0	
+	return 0
+	;;
+	InternetGatewayDevice.UDPEchoConfig.Enable)
+	get_udpechoconfig_enable 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.Interface)
+	get_udpechoconfig_interface 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.SourceIPAddress)
+	get_udpechoconfig_src_addr 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.UDPPort)
+	get_udpechoconfig_udpport 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.EchoPlusEnabled)
+	get_udpechoconfig_plus_enable 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.EchoPlusSupported)
+	get_udpechoconfig_plus_support 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.PacketsReceived)
+	get_udpechoconfig_packets_received 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.PacketsResponded)
+	get_udpechoconfig_packets_responded 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.BytesReceived)
+	get_udpechoconfig_bytes_received 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.BytesResponded)
+	get_udpechoconfig_bytes_responded 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.TimeFirstPacketReceived)
+	get_udpechoconfig_time_first_packet_received 0
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.TimeLastPacketReceived)
+	get_udpechoconfig_time_last_packet_received 0
+	return $?
+	;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_udpecho_diagnostics() {
+local fcode
+case "$action" in
+	set_value)
+	fcode=$E_NON_WRITABLE_PARAMETER
+	;;
+	set_notification)
+	fcode=$E_NOTIFICATION_REJECTED
+	;;
+esac
+
+case "$1" in
+	InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.Enable)
+	set_udpechoconfig_enable "$2"
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.Interface)
+	set_udpechoconfig_interface "$2"
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.SourceIPAddress)
+	set_udpechoconfig_src_addr "$2"
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.UDPPort)
+	set_udpechoconfig_udpport "$2"
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.EchoPlusEnabled)
+	set_udpechoconfig_plus_enable "$2"
+	return $?
+	;;
+	InternetGatewayDevice.UDPEchoConfig.EchoPlusSupported)
+	return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.PacketsReceived)
+	return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.PacketsResponded)
+	return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.BytesReceived)
+	return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.BytesResponded)
+	return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.TimeFirstPacketReceived)
+	return $fcode
+	;;
+	InternetGatewayDevice.UDPEchoConfig.TimeLastPacketReceived)
+	return $fcode
+	;;
+		
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_udpecho_diagnostics() { return 0; }
+
+add_object_udpecho_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_udpecho_diagnostics() { return $E_INVALID_PARAMETER_NAME; }

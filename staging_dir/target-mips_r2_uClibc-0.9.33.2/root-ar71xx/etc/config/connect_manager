@@ -1,0 +1,14 @@
+config 'setting' 'Log'
+	option 'OpenLog' 'false'
+	option 'LogFile' '/var/log/connect_manager.log'
+
+config 'setting' 'WanConnection'
+	option 'IdleTime' 600
+	option 'RoamingAutoConnect' 'false'
+	option 'AutoConnect' 'true'
+
+config 'setting' 'Database'
+	option 'StatisticsDatabaseFile' '/usr/local/connect_manager/database.dat'
+        option 'DevicePushInfoDatabaseFile' '/usr/local/connect_manager/devicepushinfo.dat'
+
+

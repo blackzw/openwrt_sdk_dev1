@@ -1,0 +1,50 @@
+<%#
+LuCI - Lua Configuration Interface
+Copyright 2008 Steven Barth <steven@midlink.org>
+Copyright 2008 Jo-Philipp Wich <xm@leipzig.freifunk.net>
+Copyright 2012 David Menting <david@nut-bolt.nl>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+-%>
+<%
+	local disp = require "luci.dispatcher"
+
+	local request  = disp.context.path
+
+	local category = request[1]
+
+	local tree = disp.node()
+
+	local categories = disp.node_childs(tree)
+%>
+
+   </div>
+  </div>
+  <div id="wrap"> 
+		<div class="popUpMask">
+		<iframe frameborder="0" class="popUpMaskIframe"></iframe>
+			<div class="popUpMaskDiv"></div>
+		</div>
+		<div id="popUpWrap">
+			<div id="popUpBox">
+				<div id="popUpHead"><span id="popUpTitle"></span><a href="javascript:void(0)" id="popUpClose" style="display: none">X</a></div>
+				<div id="popUpMain">
+					<div id="popUpContent"></div>
+					<div id="popUpBtnWrap"><div id="okBtnWrap"><button type="button" class="btn btn-primary" id="btnPopUpOk"><%:ids_ok%></button></div><div id="cancelBtnWrap"><button type="button" class="btn btn-primary" id="btnPopUpCancel"><%:ids_cancel%></button></div></div></div>
+				</div>
+			</div>
+	</div>
+    <footer>
+        <div class="container">
+   		<%:ids_system_copyright%>
+	   	<!--<a href="http://luci.subsignal.org/">Powered by <%= luci.__appname__ .. " (" .. luci.__version__ .. ")" %></a>-->
+        </div>
+    </footer>
+</body>
+</html>
+

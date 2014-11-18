@@ -1,0 +1,625 @@
+<%+header%>
+<script>
+$(function($){
+	uiPageInit();
+})
+
+var P_ipFilterSettings = {};
+var P_macFilterSettings = {};
+var P_urlFilterSettings = {};
+var P_listMaxLength = 10;
+
+function uiPageInit(){
+	uiInitFilterBox();
+	uiShowBoxInit();
+}
+
+function uiShowBoxInit(){
+	$(".accordion-toggle").click(function(){
+		var accordion = $(this).parents(".accordion");
+		accordion.find(".filter-state").hide();
+		accordion.find(".accordion-body").removeClass("in");
+		var group = $(this).parents(".accordion-group");
+		group.find(".filter-state").show();
+		group.find(".accordion-body").addClass("in");
+	})
+}
+
+function uiAddIpFilterItemStr(item){
+	var str='';
+	var isNew = false;
+	if (item == null){
+		isNew = true;
+		item = {
+			LanIP:"",
+			LanSrcPort:"",
+			LanDestPort:"",
+			WanIP:"",
+			WanSrcPort:"",
+			WanDestPort:"",
+			Protocol:"1"
+		}
+	}
+	str += '<tr data-item="ipItem" data-new="'+isNew+'"><td class="text-center"><input type="text" data-key="lanIP" value="'+item.LanIP+'" style="width:120px;"/></td>';
+	str += '<td class="text-center"><input type="text" style="width:42px;" data-key="lanSrcPort" value="'+item.LanSrcPort+'" /> - <input type="text" style="width:42px;" data-key="lanDestPort" value="'+item.LanDestPort+'" /></td>';
+	str += '<td class="text-center"><input type="text" data-key="wanIP" value="'+item.WanIP+'" style="width:120px;"/></td>';
+	str += '<td class="text-center"><input type="text" style="width:42px;" data-key="wanSrcPort" value="'+item.WanSrcPort+'"/> - <input type="text" style="width:42px;" data-key="wanDestPort" value="'+item.WanDestPort+'"/></td>';
+	str += '<td class="text-center">'+makeProtocolStr(item.Protocol)+'</td><td class="text-center"><input type="checkbox"/></td></tr>';
+
+	function makeProtocolStr(val){
+		var selectStr = 'selected="selected"';
+		var isTCP = "",isUDP = "",isTCP_UDP = "";
+		val = parseInt(val);
+		if(val == 1){
+			isTCP = selectStr;
+		}else if(val == 2){
+			isUDP = selectStr;
+		}else{
+			isTCP_UDP = selectStr;
+		}
+		var str = '<select data-key="protocol" style="width:120px;"><option value="1"'+isTCP+'><%:TCP%></option><option value="2"'+isUDP+'><%:UDP%></option><option value="3"'+isTCP_UDP+'><%:TCP/UDP%></option></select>'
+		return str;
+	}
+	return str;
+}
+
+function uiCheckIpItem(ipItem){
+	$this = ipItem;
+	var ipItemObj = {};
+	var $lanIp = $this.find("[data-key='lanIP']");
+	var lanIp = $lanIp.val();
+	
+	if(lanIp == "" || !cbi_validators.ip4addr.apply(lanIp)){
+		$lanIp.select().focus();
+		return false;
+	}else{
+		ipItemObj.LanIP = lanIp;
+	}
+	
+	var $lanSrcPort= $this.find("[data-key='lanSrcPort']");
+	var lanSrcPort = $lanSrcPort.val();
+	var $lanDestPort= $this.find("[data-key='lanDestPort']");
+	var lanDestPort = $lanDestPort.val();
+	if(lanSrcPort == "" || !cbi_validators.port.apply(lanSrcPort)){
+		$lanSrcPort.select().focus();
+		return false;
+	}else if(lanDestPort == "" || !cbi_validators.port.apply(lanDestPort)){
+		$lanDestPort.select().focus();
+		return false;
+	}else if(parseInt(lanSrcPort)>parseInt(lanDestPort)){
+		$lanSrcPort.select().focus();
+		return false;
+	}else{
+		ipItemObj.LanSrcPort = lanSrcPort;
+		ipItemObj.LanDestPort = lanDestPort;
+	}
+
+	var $wanIp = $this.find("[data-key='wanIP']");
+	var wanIp = $wanIp.val();
+	if(wanIp == "" || !cbi_validators.ip4addr.apply(wanIp)){
+		$wanIp.select().focus();
+		return false;
+	}else{
+		ipItemObj.WanIP = wanIp;
+	}
+
+	var $wanSrcPort= $this.find("[data-key='wanSrcPort']");
+	var wanSrcPort = $wanSrcPort.val();
+	var $wanDestPort= $this.find("[data-key='wanDestPort']");
+	var wanDestPort = $wanDestPort.val();
+	if(wanSrcPort == "" || !cbi_validators.port.apply(wanSrcPort)){
+		$wanSrcPort.select().focus();
+		return false;
+	}else if(wanDestPort == "" || !cbi_validators.port.apply(wanDestPort)){
+		$wanDestPort.select().focus();
+		return false;
+	}else if(parseInt(wanSrcPort) > parseInt(wanDestPort)){
+		$wanSrcPort.select().focus();
+		return false;
+	}else{
+		ipItemObj.WanSrcPort = wanSrcPort;
+		ipItemObj.WanDestPort = wanDestPort;
+	}
+
+	ipItemObj.Protocol = $this.find("[data-key='protocol']").val();
+
+	return ipItemObj;
+}
+
+function uiAddMacFilterItemStr(mac){
+	var str = '<tr>';
+		str += '<td class="text-center">';
+		str += '<input type="text" data-key="macFilter" class="iptIpText" value="'+mac+'"/> <span><%:eg:00:1D:0F:10:2D:D9%><span></td>';
+		str += '<td class="text-center"><input type="checkbox"/></td></tr>';
+	return str;
+}
+
+
+function uiAddUrlFilterItemStr(url){
+	var str = '<tr>';
+		str += '<td class="text-center">';
+		str += '<input type="text" data-key="urlFilter" class="iptIpText" value="'+url+'"/></td>';
+		str += '<td class="text-center"><input type="checkbox"/></td></tr>';
+	return str;
+}
+
+
+var filterArrayFn = {};
+filterArrayFn.ipFilter = {
+	init:function(){
+		P_ipFilterSettings = SDK.Filter.GetIPFilterSettings();
+		var list = P_ipFilterSettings.IpList;
+		var $ipStateSel = $("#sel-ipState");
+		$ipStateSel.val(P_ipFilterSettings.State);
+		var itemHtmlStr = "";
+		if($.isArray(list) && list.length > 0){
+			$.each(list,function(i,v){
+				itemHtmlStr += uiAddIpFilterItemStr(v);
+			});
+			$ipStateSel.attr("disabled","disabled");
+		}else{
+			$ipStateSel.removeAttr("disabled");
+		}
+		
+		var $itemBox = $("#ipFilterBoxTb");
+		$itemBox.html(itemHtmlStr).find("input:text,select").attr("disabled",true);
+	},
+
+	addItem:function(){
+		var box = $("#ipFilterBoxTb");
+		var currentNew = box.find("[data-new='true'][data-item='ipItem']").last();
+		if(currentNew.length == 0){
+			box.append(uiAddIpFilterItemStr(null));
+		}else if(uiCheckIpItem(currentNew)){
+			currentNew.find("input:text,select").attr("disabled",true);
+			box.append(uiAddIpFilterItemStr(null));
+		}
+		
+	},
+
+	setting:function(){
+		var list = [];
+		if(checkVal()){
+			settingEvent();
+		}else{
+			return;
+		}
+
+		function checkVal(){
+			var result = true;
+			$("[data-item='ipItem']").each(function(){
+				var $this = $(this);
+				var checkResult = uiCheckIpItem($this);
+				if(!checkResult){
+					result = false;
+					return false;
+				}else{
+					list.push(checkResult);
+				}
+
+			})
+			return result;
+		}
+
+		function settingEvent(){
+			var state = parseInt($("#sel-ipState").val());
+			var params = {State:state,IpList:list};
+			var result = SDK.Filter.SetIPFilterSettings(params);
+			if(result.error == 0){
+				sys.alert("<%:ids_succeeded%>",function(){
+					uiInitFilterBoxItem("ipFilter");
+				})
+			}else{
+				sys.alert("<%:ids_failed%>",function(){
+					uiInitFilterBoxItem("ipFilter");
+				})
+			}
+		}
+		
+	}
+}
+filterArrayFn.macFilter = {
+	init:function(){
+		P_macFilterSettings = SDK.Filter.GetMacFilterSettings();
+		var macList = P_macFilterSettings.MacList;
+		var $macStateSel = $("#sel-macState");
+		$macStateSel.val(P_macFilterSettings.State);
+		var itemHtmlStr = "";
+		if($.isArray(macList) && macList.length > 0){
+			$.each(macList,function(i,v){
+				itemHtmlStr += uiAddMacFilterItemStr(v);
+			});
+			$macStateSel.attr("disabled","disabled");
+		}else{
+			$macStateSel.removeAttr("disabled");
+		}
+		
+		var $itemBox = $("#macFilterBoxTb");
+		$itemBox.html(itemHtmlStr).find("input:text").attr("disabled",true);
+	},
+
+	addItem:function(){
+		var box = $("#macFilterBoxTb");
+		var currentNew = box.find("input[data-key='macFilter']").last();
+		var currentNewVal =currentNew.val();
+
+		if(currentNew.length == 0){
+			box.append(uiAddMacFilterItemStr(""));
+		}else if(currentNewVal == "" || !isValidMacAddress(currentNewVal)){
+			currentNew.select().focus();
+		}else{
+			currentNew.attr("disabled",true);
+			box.append(uiAddMacFilterItemStr(""));
+		}
+		
+	},
+
+	setting:function(){
+		var list = [];
+		if(checkVal()){
+			settingEvent();
+		}else{
+			return;
+		}
+
+		function checkVal(){
+			var result = true;
+			$("input[data-key='macFilter']").each(function(){
+				var $this = $(this);
+				var thisVal = $this.val();
+				if(thisVal == "" || !isValidMacAddress(thisVal)){
+					sys.alert("<%:ids_filter_macRuleMsg%>",function(){
+						$this.select().focus();
+					})
+					result = false;
+					return false;
+				}else{
+					list.push(thisVal);
+				}
+
+			})
+			return result;
+		}
+		function settingEvent(){
+			var state = parseInt($("#sel-macState").val());
+			var params = {State:state,MacList:list}
+			var result = SDK.Filter.SetMacFilterSettings(params);
+			if(result.error == 0){
+				sys.alert("<%:ids_succeeded%>",function(){
+					uiInitFilterBoxItem("macFilter");
+				})
+			}else{
+				sys.alert("<%:ids_failed%>",function(){
+					uiInitFilterBoxItem("macFilter");
+				})
+			}
+		}
+		
+	}
+	
+};
+
+filterArrayFn.urlFilter = {
+	init:function(){
+		P_urlFilterSettings = SDK.Filter.GetUrlFilterSettings();
+		var urlList = P_urlFilterSettings.UrlList;
+		var $urlStateSel = $("#sel-urlState");
+		$urlStateSel.val(P_urlFilterSettings.State);
+		var itemHtmlStr = "";
+		if($.isArray(urlList) && urlList.length > 0){
+			$.each(urlList,function(i,v){
+				itemHtmlStr += uiAddUrlFilterItemStr(v);
+			});
+			$urlStateSel.attr("disabled","disabled");
+		}else{
+			$urlStateSel.removeAttr("disabled");
+		}
+		
+		var $itemBox = $("#urlFilterBoxTb");
+		$itemBox.html(itemHtmlStr).find("input:text").attr("disabled",true);
+	},
+	addItem:function(){
+		var box = $("#urlFilterBoxTb");
+		var currentNew = box.find("input[data-key='urlFilter']").last();
+		var currentNewVal =currentNew.val();
+
+		if(currentNew.length == 0){
+			box.append(uiAddUrlFilterItemStr(""));
+		}else if(currentNewVal == "" || !cbi_validators.host.apply(currentNewVal)){
+			currentNew.select().focus();
+		}else{
+			currentNew.attr("disabled",true);
+			box.append(uiAddUrlFilterItemStr(""));
+		}
+	},
+
+	setting:function(){
+		var urlList = [];
+		if(checkUrlVal()){
+			settingEvent();
+		}else{
+			return;
+		}
+
+		function checkUrlVal(){
+			var result = true;
+			$("input[data-key='urlFilter']").each(function(){
+				var $this = $(this);
+				var thisUrl = $this.val();
+				if(thisUrl == "" || !cbi_validators.host.apply(thisUrl)){
+					sys.alert("<%:ids_filter_urlRuleMsg%>",function(){
+						$this.select().focus();
+					})
+					result = false;
+					return false;
+				}else{
+					urlList.push(thisUrl)
+				}
+
+			})
+			return result;
+		}
+		function settingEvent(){
+			var urlState = parseInt($("#sel-urlState").val());
+			var params = {State:urlState,UrlList:urlList}
+			var result = SDK.Filter.SetUrlFilterSettings(params);
+			if(result.error == 0){
+				sys.alert("<%:ids_succeeded%>",function(){
+					uiInitFilterBoxItem("urlFilter");
+				})
+			}else{
+				sys.alert("<%:ids_failed%>",function(){
+					uiInitFilterBoxItem("urlFilter");
+				})
+			}
+		}
+	}
+}
+
+
+
+function uiInitFilterBox(){
+	$("div[data-class='filterBox']").each(function(){
+		uiInitFilterBoxItem($(this).attr("data-for"));
+	})
+}
+
+function uiInitFilterBoxItem(item){
+	$this = $("[data-for='"+item+"']");
+	$this.find("button").unbind();
+	var eventName = $this.attr("data-for");
+	var initData = filterArrayFn[eventName]["init"].apply();
+	
+	var $itemBox = $this.find("[data-class='itemBox']");
+
+	uiCheckboxMonitoring($itemBox);
+	
+	var $addBtn = $this.find("[data-do='add']");
+	var $editBtn = $this.find("[data-do='edit']");
+	var $delBtn = $this.find("[data-do='del']");
+	var $cancelBtn = $this.find("[data-do='cancel']");
+	var $applyBtn = $this.find("[data-do='apply']");
+
+	var checkboxAll = $this.find("[data-do='checkAll']");
+	$applyBtn.setBtnDisabled();
+	$cancelBtn.setBtnDisabled();
+
+	$this.find(".filter-state").unbind().change(function(){
+		$applyBtn.removeBtnDisabled();
+		$cancelBtn.removeBtnDisabled();
+	})
+
+	$addBtn.click(function(){
+		filterArrayFn[eventName]["addItem"].apply();
+		uiCheckboxMonitoring($itemBox);
+		$applyBtn.removeBtnDisabled();
+		$cancelBtn.removeBtnDisabled();
+	});
+	
+
+	$editBtn.click(function(){
+		$itemBox.find("input:checkbox:checked").each(function(){
+			$(this).parents("tr").find("input:text,select").attr("disabled",false);
+			$(this).removeAttr("checked");
+		})
+		uiCheckboxMonitoring($itemBox);
+		$applyBtn.removeBtnDisabled();
+		$cancelBtn.removeBtnDisabled();
+	});
+
+	$delBtn.click(function(){
+		$itemBox.find("input:checkbox:checked").each(function(){
+			$(this).parents("tr").remove();
+		});
+		uiCheckboxMonitoring($itemBox);
+		$applyBtn.removeBtnDisabled();
+		$cancelBtn.removeBtnDisabled();
+	});
+
+	
+	checkboxAll.change(function(){
+		var isChecked = $(this).attr("checked") =="checked" || $(this).attr("checked") ==true ?true:false;
+		var $itemArr = $itemBox.find("input:checkbox");
+		$itemArr.attr("checked",isChecked);
+		uiCheckboxMonitoring($itemBox);
+	})
+
+	$applyBtn.click(function(){
+		filterArrayFn[eventName]["setting"].apply();
+	})
+
+	$cancelBtn.click(function(){
+		uiInitFilterBoxItem(item);
+	})
+
+	
+	$itemBox.find("input:checkbox").live("click",function(){
+		uiCheckboxMonitoring($itemBox);
+	})
+}
+
+
+function uiCheckboxMonitoring(itemBox){
+	var checkboxLength = itemBox.find("input:checkbox").length;
+	var checkboxCheckedLength = itemBox.find("input:checkbox:checked").length;
+	var $checkboxAll = itemBox.parents("[data-class='filterBox']").find("[data-do='checkAll']");
+	var $addBtn = itemBox.parents("[data-class='filterBox']").find("[data-do='add']");
+	var $editDelBtns = itemBox.parents("[data-class='filterBox']").find("[data-do='edit'],[data-do='del']");
+	if(checkboxLength != 0 && checkboxLength == checkboxCheckedLength){
+		$checkboxAll.attr("checked","checked");
+	}else{
+		$checkboxAll.removeAttr("checked");
+	}
+
+	if(checkboxLength <= P_listMaxLength){
+		$addBtn.removeBtnDisabled();
+	}else{
+		$addBtn.setBtnDisabled();
+	}
+
+	if(checkboxCheckedLength == 0){
+		$editDelBtns.setBtnDisabled();
+	}else{
+		$editDelBtns.removeBtnDisabled();
+	}
+	
+}
+
+</script>
+<style type="text/css">
+	#filter-box .accordion .accordion-heading .accordion-toggle{width: 300px;}
+	.filter-state {display: none;width:100px;float:right; margin:5px 20px;}
+	.table-bordered-over{border:1px solid #dddddd;}
+	.table-bordered-over th{background: #f2f2f2;}
+	.ipFilter-table th{text-align: center;}
+</style>
+<div id="filter-box" class="main-box border-notop">
+	<div class="accordion">
+		<!-- ip filter start -->
+		<div class="accordion-group" data-for="ipFilter" data-class="filterBox">
+			<div class="accordion-heading">
+				<select class="filter-state" style="display:block;" id="sel-ipState">
+					<option value="0"><%:ids_disable%></option>
+	    			<option value="1"><%:ids_whiteList%></option>
+	    			<option value="2"><%:ids_blacklist%></option>
+    			</select>
+				<label class="accordion-toggle"><%:IP Filter%></label>
+			</div>
+			<div class="accordion-body collapse in">
+				<div class="accordion-inner">
+					<div class="text-right mb10">
+			    	    <button class="btn btn-primary" data-do="add"><%:ids_add%></button>
+			    	    <button class="btn btn-primary" data-do="edit"><%:ids_edit%></button>
+			    	    <button class="btn btn-primary" data-do="del"><%:ids_delete%></button>
+			    	</div>
+			    	
+					<table class="table table-bordered-over ipFilter-table">
+				    	<tr>
+					    	<th>IP Address</th>
+					    	<th>LAN Port</th>
+					    	<th>WAN IP Address</th>
+					    	<th>WAN Port</th>
+					    	<th>Protocol</th>
+					    	<th width="40" class="text-center">
+					    		<input type="checkbox" data-do="checkAll"/>
+					    	</th>
+					    </tr>
+					    <tbody data-class="itemBox" id="ipFilterBoxTb">
+				    		
+				    	</tbody>
+				    </table>
+
+					<div class="text-center">
+			    	    <button class="btn btn-primary" data-do="apply"><%:ids_apply%></button>
+			    	    <button class="btn btn-primary" data-do="cancel"><%:ids_cancel%></button>
+			    	</div>
+
+				</div>
+			</div>
+		</div>
+		<!-- ip filter end -->
+
+
+		<!-- mac filter start -->
+		<div class="accordion-group" data-for="macFilter" data-class="filterBox">
+			<div class="accordion-heading">
+				<select class="filter-state" id="sel-macState">
+					<option value="0"><%:ids_disable%></option>
+	    			<option value="1"><%:ids_whiteList%></option>
+	    			<option value="2"><%:ids_blacklist%></option>
+    			</select>
+				<label class="accordion-toggle"><%:ids_filter_macFilter%></label>
+			</div>
+			<div class="accordion-body collapse">
+				<div class="accordion-inner">
+					<div class="text-right mb10">
+			    	    <button class="btn btn-primary" data-do="add"><%:ids_add%></button>
+			    	    <button class="btn btn-primary" data-do="edit"><%:ids_edit%></button>
+			    	    <button class="btn btn-primary" data-do="del"><%:ids_delete%></button>
+			    	</div>
+			    	
+					<table class="table table-bordered-over">
+				    	<tr>
+					    	<th class="text-center"><%:ids_filter_macAddress%></th>
+					    	<th width="40" class="text-center">
+					    		<input type="checkbox" data-do="checkAll"/>
+					    	</th>
+					    </tr>
+					    <tbody data-class="itemBox" id="macFilterBoxTb">
+				    		
+				    	</tbody>
+				    </table>
+
+					<div class="text-center">
+			    	    <button class="btn btn-primary" data-do="apply"><%:ids_apply%></button>
+			    	    <button class="btn btn-primary" data-do="cancel"><%:ids_cancel%></button>
+			    	</div>
+
+				</div>
+			</div>
+		</div>
+		<!-- mac filter end -->
+
+		<!-- url filter start -->
+		<div class="accordion-group" data-for="urlFilter" data-class="filterBox">
+			<div class="accordion-heading">
+				<select class="filter-state" id="sel-urlState">
+					<option value="0"><%:ids_disable%></option>
+	    			<option value="1"><%:ids_whiteList%></option>
+	    			<option value="2"><%:ids_blacklist%></option>
+    			</select>
+				<label class="accordion-toggle"><%:ids_filter_urlFilter%></label>
+			</div>
+			<div class="accordion-body collapse">
+				<div class="accordion-inner">
+					<div class="text-right mb10">
+			    	    <button class="btn btn-primary" data-do="add"><%:ids_add%></button>
+			    	    <button class="btn btn-primary" data-do="edit"><%:ids_edit%></button>
+			    	    <button class="btn btn-primary" data-do="del"><%:ids_delete%></button>
+			    	</div>
+			    	
+					<table class="table table-bordered-over">
+				    	<tr>
+					    	<th class="text-center"><%:ids_filter_urlAddress%></th>
+					    	<th width="40" class="text-center">
+					    		<input type="checkbox" data-do="checkAll"/>
+					    	</th>
+					    </tr>
+					    <tbody data-class="itemBox" id="urlFilterBoxTb">
+				    		
+				    	</tbody>
+				    </table>
+
+					<div class="text-center">
+			    	    <button class="btn btn-primary" data-do="apply"><%:ids_apply%></button>
+			    	    <button class="btn btn-primary" data-do="cancel"><%:ids_cancel%></button>
+			    	</div>
+
+				</div>
+			</div>
+		</div>
+		<!-- url filter end -->
+
+	</div>
+</div>
+<%+footer%>

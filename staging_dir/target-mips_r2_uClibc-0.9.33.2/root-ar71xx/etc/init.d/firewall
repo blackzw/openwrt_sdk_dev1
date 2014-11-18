@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+
+START=19
+
+boot() {
+	# Be silent on boot, firewall might be started by hotplug already,
+	# so don't complain in syslog.
+	fw3 -q start
+	iptables -R reject 2 -j ACCEPT
+}
+
+start() {
+	fw3 start
+	iptables -R reject 2 -j ACCEPT
+}
+
+stop() {
+	fw3 flush
+}
+
+restart() {
+	fw3 restart
+	iptables -R reject 2 -j ACCEPT
+}
+
+reload() {
+	fw3 reload
+	iptables -R reject 2 -j ACCEPT
+}
+iptables -R reject 2 -j ACCEPT

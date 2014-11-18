@@ -1,0 +1,622 @@
+#!/bin/sh
+
+
+
+get_ping_diagnostics_state()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.DiagnosticsState"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$ping_diag_file_name" ]; then
+			val="None"
+		else
+			val=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+		fi
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_state()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.DiagnosticsState"
+	
+	case "$action" in
+		set_value)
+		local exist_val=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+		if [ "$val" = "Requested" -a "$exist_val" != "Requested" ]; then
+			$UCI_SET easycwmp.@ping_diagnostics[0].DiagnosticsState="$val"
+			easycwmp_config_load
+			touch $ping_request_file
+			#/usr/share/easycwmp/oem/ping_tools $ping_diag_file_name &
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_interface()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.Interface"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@ping_diagnostics[0].Interface 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_interface()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.Interface"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -le 0 -0 $len -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@ping_diagnostics[0].Interface="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_host()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.Host"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@ping_diagnostics[0].Host 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_host()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.Host"
+	
+	case "$action" in
+		set_value)
+		local len=`expr length $val`
+		[ $len -le 0 -0 $len -gt 256 ] && return $E_INVALID_ARGUMENTS
+		$UCI_SET easycwmp.@ping_diagnostics[0].Host="$val"
+		easycwmp_config_load
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_number_of_repetitions()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.NumberOfRepetitions"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@ping_diagnostics[0].NumberOfRepetitions 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_number_of_repetitions()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.NumberOfRepetitions"
+	
+	case "$action" in
+		set_value)
+		if [ $val -ge 1 ]; then
+			$UCI_SET easycwmp.@ping_diagnostics[0].NumberOfRepetitions="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_timeout()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.Timeout"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@ping_diagnostics[0].Timeout 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_timeout()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.Timeout"
+	
+	case "$action" in
+		set_value)
+		if [ $val -ge 1 ]; then
+			$UCI_SET easycwmp.@ping_diagnostics[0].Timeout="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_datablock_size()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.DataBlockSize"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@ping_diagnostics[0].DataBlockSize 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_datablock_size()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.DataBlockSize"
+	
+	case "$action" in
+		set_value)
+		if [ $val -ge 1 -a $val -le 65535 ]; then
+			$UCI_SET easycwmp.@ping_diagnostics[0].DataBlockSize="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_dscp()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.DSCP"
+	local permissions="1"	
+	case "$action" in
+		get_value)
+		val=`$UCI_GET easycwmp.@ping_diagnostics[0].DSCP 2> /dev/null`		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+set_ping_diagnostics_dscp()
+{	
+	local val=$1
+	local parm="InternetGatewayDevice.IPPingDiagnostics.DSCP"
+	
+	case "$action" in
+		set_value)
+		if [ $val -ge 0 -a $val -le 64 ]; then
+		
+			$UCI_SET easycwmp.@ping_diagnostics[0].DSCP="$val"
+			easycwmp_config_load
+		else
+			return $E_INVALID_ARGUMENTS
+		fi
+		;;
+		set_notification)
+		easycwmp_set_parameter_notification "$parm" "$val"
+		;;
+	esac
+	return 0
+}
+
+get_ping_diagnostics_success_count()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.SuccessCount"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$ping_diag_file_name" ]; then
+			val="0"
+		else
+			local state=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "$state" = "Complete" ]; then
+				val=`cat $ping_diag_file_name | grep packets\ transmitted | awk -F "," '{print $2}' | awk '{print $1}'`				
+			else
+				val="0"		
+			fi
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_ping_diagnostics_failure_count()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.FailureCount"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$ping_diag_file_name" ]; then
+			val="0"
+		else
+			local state=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "$state" = "Complete" ]; then
+				local total_num=`cat $ping_diag_file_name | grep packets\ transmitted | awk -F "," '{print $1}' | awk '{print $1}'`
+				local recv_num=`cat $ping_diag_file_name | grep packets\ transmitted | awk -F "," '{print $2}' | awk '{print $1}'`
+				let val=$total_num-$recv_num
+			else
+				val="0"		
+			fi
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_ping_diagnostics_average_response_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.AverageResponseTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$ping_diag_file_name" ]; then
+			val="0"
+		else
+			local state=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "$state" = "Complete" ]; then
+				val=`cat $ping_diag_file_name | grep "min/avg/max" | awk '{print $4}' | awk -F "/" '{print $2}'`
+			else
+				val="0"		
+			fi
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_ping_diagnostics_minimum_response_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.MinimumResponseTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$ping_diag_file_name" ]; then
+			val="0"
+		else
+			local state=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "$state" = "Complete" ]; then
+				val=`cat $ping_diag_file_name | grep "min/avg/max" | awk '{print $4}' | awk -F "/" '{print $1}'`
+			else
+				val="0"		
+			fi
+		fi		
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+get_ping_diagnostics_maximum_response_time()
+{
+	local nl="$1"
+	local val=""
+	local param="InternetGatewayDevice.IPPingDiagnostics.MaximumResponseTime"
+	local permissions="0"	
+	case "$action" in
+		get_value)
+		if [ ! -e "$ping_diag_file_name" ]; then
+			val="0"
+		else
+			local state=`$UCI_GET easycwmp.@ping_diagnostics[0].DiagnosticsState 2> /dev/null`
+			if [ "$state" = "Complete" ]; then
+				val=`cat $ping_diag_file_name | grep "min/avg/max" | awk '{print $4}' | awk -F "/" '{print $3}'`
+			else
+				val="0"		
+			fi
+		fi	
+		;;
+		get_name)
+		[ "$nl" = "1" ] && return $E_INVALID_ARGUMENTS
+		;;
+		get_notification)
+		easycwmp_get_parameter_notification "val" "$param"
+		;;
+	esac
+	easycwmp_output "$param" "$val" "$permissions"
+	return 0
+}
+
+
+get_ping_object() {
+nl="$1"
+case "$action" in
+	get_name)
+	[ "$nl" = "0" ] && easycwmp_output "InternetGatewayDevice.IPPingDiagnostics." "" "0"
+	;;
+esac
+}
+
+get_ping_diagnostics() {
+case "$1" in
+	InternetGatewayDevice.)
+	get_ping_object 0
+	get_ping_diagnostics_state "$2"
+	get_ping_diagnostics_interface "$2"
+	get_ping_diagnostics_host "$2"
+	get_ping_diagnostics_number_of_repetitions "$2"
+	get_ping_diagnostics_timeout "$2"
+	get_ping_diagnostics_datablock_size "$2"
+	get_ping_diagnostics_dscp "$2"
+	get_ping_diagnostics_success_count "$2"
+	get_ping_diagnostics_failure_count "$2"
+	get_ping_diagnostics_average_response_time "$2"
+	get_ping_diagnostics_minimum_response_time "$2"
+	get_ping_diagnostics_maximum_response_time "$2"
+	return 0
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.)
+	get_ping_object "$2"
+	get_ping_diagnostics_state 0
+	get_ping_diagnostics_interface 0
+	get_ping_diagnostics_host 0
+	get_ping_diagnostics_number_of_repetitions 0
+	get_ping_diagnostics_timeout 0
+	get_ping_diagnostics_datablock_size 0
+	get_ping_diagnostics_dscp 0
+	get_ping_diagnostics_success_count 0
+	get_ping_diagnostics_failure_count 0
+	get_ping_diagnostics_average_response_time 0
+	get_ping_diagnostics_minimum_response_time 0
+	get_ping_diagnostics_maximum_response_time 0
+	return 0
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.DiagnosticsState)
+	get_ping_diagnostics_state 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.Interface)
+	get_ping_diagnostics_interface 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.Host)
+	get_ping_diagnostics_host 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.NumberOfRepetitions)
+	get_ping_diagnostics_number_of_repetitions 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.Timeout)
+	get_ping_diagnostics_timeout 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.DataBlockSize)
+	get_ping_diagnostics_datablock_size 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.DSCP)
+	get_ping_diagnostics_dscp 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.SuccessCount)
+	get_ping_diagnostics_success_count 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.FailureCount)
+	get_ping_diagnostics_failure_count 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.AverageResponseTime)
+	get_ping_diagnostics_average_response_time 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.MinimumResponseTime)
+	get_ping_diagnostics_minimum_response_time 0
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.MaximumResponseTime)
+	get_ping_diagnostics_maximum_response_time 0
+	return $?
+	;;
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+set_ping_diagnostics() {
+local fcode
+case "$action" in
+	set_value)
+	fcode=$E_NON_WRITABLE_PARAMETER
+	;;
+	set_notification)
+	fcode=$E_NOTIFICATION_REJECTED
+	;;
+esac
+
+case "$1" in
+	InternetGatewayDevice.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.)
+	[ "$action" = "set_notification" ] && return $fcode
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.DiagnosticsState)
+	set_ping_diagnostics_state "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.Interface)
+	set_ping_diagnostics_interface "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.Host)
+	set_ping_diagnostics_host "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.NumberOfRepetitions)
+	set_ping_diagnostics_number_of_repetitions "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.Timeout)
+	set_ping_diagnostics_timeout "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.DataBlockSize)
+	set_ping_diagnostics_datablock_size "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.DSCP)
+	set_ping_diagnostics_dscp "$2"
+	return $?
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.SuccessCount)
+	return $fcode
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.FailureCount)
+	return $fcode
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.AverageResponseTime)
+	return $fcode
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.MinimumResponseTmie)
+	return $fcode
+	;;
+	InternetGatewayDevice.IPPingDiagnostics.MaximumResponseTime)
+	return $fcode
+	;;
+		
+esac
+return $E_INVALID_PARAMETER_NAME
+}
+
+build_instances_ping_diagnostics() { return 0; }
+
+add_object_ping_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
+
+delete_object_ping_diagnostics() { return $E_INVALID_PARAMETER_NAME; }
