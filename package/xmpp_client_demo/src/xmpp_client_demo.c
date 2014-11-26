@@ -15,6 +15,7 @@
 #include <arpa/inet.h>  
 #include <netinet/in.h>  
 #include <stdio.h>
+#include <errno.h>
 
 /******************************************************
  *               Function Definitions
@@ -26,7 +27,7 @@ static char *xmppuser = "<auth xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\" mechan
 
 static char *newstream = "<?xml version='1.0'?><stream:stream to = '192.168.100.1' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0'>";
 
-static char *bind = "<iq id=\"cF25i-0\" type=\"set\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><resource>Gent.3</resource></bind></iq>";
+static char *bind0 = "<iq id=\"cF25i-0\" type=\"set\"><bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\"><resource>Gent.3</resource></bind></iq>";
 
 static char *session = "<iq xmlns=\"jabber:client\" id=\"cF25i-1\" type=\"set\"><session xmlns=\"urn:ietf:params:xml:ns:xmpp-session\"/></iq>";
 

@@ -84,5 +84,5 @@ endef
 # line calls BuildPackage which in turn actually uses this information to
 # build a package.
 #	$(eval	$(call	BuildPackage,$(PKG_NAME)))
-$(eval $(call BuildPackage,helloworld))
+$(eval $(call BuildPackage,xmpp_client_demo))
 
