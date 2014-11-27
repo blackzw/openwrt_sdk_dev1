@@ -50,21 +50,20 @@ int main(int argc, char *argv[])
     	fprintf(stderr, "Usage: %s hostname portnumber\n\a", argv[0]);
     	exit(1);
     }
-    //创建套接字
+
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
     	fprintf(stderr, "Socket Error:%s\n\a", strerror(errno));   
         exit(1); 
     }
-     // 填充服务器的地址信息   
+    
     server_addr.sin_family = AF_INET;   
     server_addr.sin_port = htons(portnumber);   
-    // 向服务器发起连接   
+    
     if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) == -1) {   
         fprintf(stderr, "Connect Error:%s\n\a", strerror(errno));   
         exit(1);   
     }   
-    // 连接成功后，从服务器接收信息   
     if ((nbytes = read(sockfd, buffer, 1024)) == -1) {   
         fprintf(stderr, "Read Error:%s\n", strerror(errno));   
         exit(1);   
